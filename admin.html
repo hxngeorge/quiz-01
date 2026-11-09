@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QUIZ://01 — Admin</title>
+
+  <!-- Same two fonts as the game, so this feels like part of it -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323:wght@400&display=swap" rel="stylesheet">
+
+  <!--
+    The admin page shares the game's colours and fonts, but none of its TV
+    frame, scanlines or glow: it's a workbench, not the show. All of its
+    styling lives here rather than in style.css, which is the game theme.
+
+    Two themes, swapped by setting data-theme on <html>. The game's neon
+    green is unreadable on white, so light mode uses the deeper green that
+    style.css already uses for button shadows.
+  -->
+  <style>
+    /* ---------- dark (default) ---------- */
+    :root,
+    :root[data-theme="dark"] {
+      --bg:        #0a0a0a;
+      --surface:   #14161a;
+      --surface-2: #1a1d23;
+      --line:      #2a2e36;
+      --line-soft: #202329;
+      --ink:       #f0f0f0;
+      --dim:       #8a8f98;
+
+      --accent:     #39ff14;   /* the game's neon green */
+      --accent-ink: #0a0a0a;   /* text printed on top of it */
+      --pink:       #ff2d78;
+
+      --ok-ink:   #39ff14;  --ok-bg:   rgba(57, 255, 20, 0.12);
+      --warn-ink: #ffc247;  --warn-bg: rgba(255, 194, 71, 0.12);
+      --bad-ink:  #ff2d78;  --bad-bg:  rgba(255, 45, 120, 0.12);
+
+      --row-hover: rgba(255, 255, 255, 0.03);
+      --row-pick:  rgba(57, 255, 20, 0.07);
+      --shadow:    0 1px 2px rgba(0, 0, 0, 0.5);
+    }
+
+    /* ---------- light ---------- */
+    :root[data-theme="light"] {
+      --bg:        #f2f3f5;
+      --surface:   #ffffff;
+      --surface-2: #f7f8fa;
+      --line:      #e1e4e8;
+      --line-soft: #ebedf0;
+      --ink:       #15181d;
+      --dim:       #656c76;
+
+      --accent:     #1a8a06;   /* the game's deeper green — readable on white */
+      --accent-ink: #ffffff;
+      --pink:       #c01457;
+
+      --ok-ink:   #15803d;  --ok-bg:   #e9f8ef;
+      --warn-ink: #8a5300;  --warn-bg: #fdf3e3;
+      --bad-ink:  #be123c;  --bad-bg:  #fdecef;
+
+      --row-hover: rgba(0, 0, 0, 0.02);
+      --row-pick:  rgba(26, 138, 6, 0.07);
+      --shadow:    0 1px 2px rgba(16, 24, 40, 0.06);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 26px 20px 60px;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "VT323", ui-monospace, Menlo, monospace;
+      font-size: 20px;
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+      transition: background 160ms, color 160ms;
+    }
+
+    /* Press Start 2P is very wide, so it only ever appears small */
+    .pixel {
+      font-family: "Press Start 2P", ui-monospace, monospace;
+      line-height: 1.6;
+      letter-spacing: 0.5px;
+    }
+    /* Long prose reads better in the system font than in a pixel face */
+    .prose {
+      font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .wrap { max-width: 1000px; margin: 0 auto; }
+    a { color: var(--accent); }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.86em;
+      background: var(--surface-2);
+      border: 1px solid var(--line-soft);
+      padding: 1px 5px;
+      border-radius: 4px;
+      color: var(--ink);
+    }
+
+    /* ---------- page header ---------- */
+    .masthead {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 22px;
+    }
+    .brand {
+      font-size: 13px;
+      color: var(--accent);
+      margin: 0 0 12px;
+    }
+    .greeting {
+      font-size: 15px;
+      margin: 0 0 6px;
+      color: var(--ink);
+    }
+    .greeting .wave { font-family: "VT323", monospace; font-size: 22px; }
+    .masthead .today {
+      color: var(--dim);
+      font-size: 19px;
+    }
+    .masthead-actions { display: flex; gap: 8px; align-items: center; }
+
+    /* ---------- cards ---------- */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 20px 22px;
+      margin-bottom: 18px;
+      box-shadow: var(--shadow);
+    }
+    /* The reference section sits back: no fill, softer edge, muted text */
+    .card--quiet {
+      background: transparent;
+      border-style: dashed;
+      border-color: var(--line-soft);
+      box-shadow: none;
+      color: var(--dim);
+      padding: 18px 20px;
+    }
+    .card--quiet .section-title { color: var(--dim); }
+    .card--quiet code { background: transparent; }
+
+    .section-title {
+      font-size: 11px;
+      color: var(--accent);
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .info-dot {
+      display: inline-grid;
+      place-items: center;
+      width: 17px;
+      height: 17px;
+      border-radius: 50%;
+      border: 1px solid currentColor;
+      font-family: "VT323", monospace;
+      font-size: 15px;
+      line-height: 1;
+      opacity: 0.85;
+      cursor: help;
+    }
+
+    /* ---------- controls ---------- */
+    button {
+      font-family: "Press Start 2P", monospace;
+      font-size: 9px;
+      letter-spacing: 0.5px;
+      line-height: 1;
+      padding: 10px 13px;
+      border-radius: 7px;
+      border: 1px solid var(--line);
+      background: var(--surface-2);
+      color: var(--ink);
+      cursor: pointer;
+      transition: background 120ms, border-color 120ms, color 120ms, transform 60ms;
+    }
+    button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+    button:active:not(:disabled) { transform: translateY(1px); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--accent-ink);
+    }
+    button.primary:hover:not(:disabled) { filter: brightness(1.08); color: var(--accent-ink); }
+
+    button.danger { color: var(--pink); border-color: color-mix(in srgb, var(--pink) 40%, var(--line)); }
+    button.danger:hover:not(:disabled) { border-color: var(--pink); background: var(--bad-bg); color: var(--pink); }
+
+    button.icon {
+      padding: 9px 11px;
+      font-family: "VT323", monospace;
+      font-size: 18px;
+    }
+    button.tiny {
+      font-size: 8px;
+      padding: 7px 9px;
+    }
+
+    input[type="text"],
+    input[type="password"] {
+      font-family: "VT323", monospace;
+      font-size: 20px;
+      padding: 9px 12px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--surface-2);
+      color: var(--ink);
+      width: 100%;
+    }
+    input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+    input[readonly] { color: var(--dim); }
+
+    .field-label {
+      display: block;
+      font-family: "Press Start 2P", monospace;
+      font-size: 8px;
+      letter-spacing: 0.5px;
+      color: var(--dim);
+      margin-bottom: 7px;
+    }
+    .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+
+    /* ---------- tables ---------- */
+    .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .table-scroll table { min-width: 500px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+    th {
+      font-family: "Press Start 2P", monospace;
+      font-size: 8px;
+      letter-spacing: 0.5px;
+      color: var(--dim);
+      font-weight: normal;
+      border-bottom-color: var(--line);
+    }
+    tbody tr { cursor: default; }
+    #sheet-rows tr { cursor: pointer; }
+    tbody tr:hover { background: var(--row-hover); }
+    tbody tr.is-selected, tbody tr.is-selected:hover { background: var(--row-pick); }
+    td.num { text-align: right; white-space: nowrap; }
+
+    /* ---------- pills & banners ---------- */
+    .pill {
+      display: inline-block;
+      font-family: "Press Start 2P", monospace;
+      font-size: 7px;
+      letter-spacing: 0.5px;
+      padding: 4px 7px;
+      border-radius: 5px;
+    }
+    .pill--good  { background: var(--ok-bg);   color: var(--ok-ink); }
+    .pill--bad   { background: var(--bad-bg);  color: var(--bad-ink); }
+    .pill--warn  { background: var(--warn-bg); color: var(--warn-ink); }
+    .pill--muted { background: var(--surface-2); color: var(--dim); }
+
+    .banner {
+      padding: 11px 14px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      border: 1px solid transparent;
+    }
+    .banner--good { background: var(--ok-bg);   color: var(--ok-ink);   border-color: color-mix(in srgb, var(--ok-ink) 25%, transparent); }
+    .banner--warn { background: var(--warn-bg); color: var(--warn-ink); border-color: color-mix(in srgb, var(--warn-ink) 25%, transparent); }
+    .banner--bad  { background: var(--bad-bg);  color: var(--bad-ink);  border-color: color-mix(in srgb, var(--bad-ink) 25%, transparent); }
+
+    .muted { color: var(--dim); }
+    .mono  { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 14px; }
+    .note  { color: var(--dim); font-size: 18px; margin: -6px 0 14px; }
+
+    /* ---------- question preview ---------- */
+    .preview-label {
+      font-family: "Press Start 2P", monospace;
+      font-size: 8px;
+      color: var(--dim);
+      margin: 20px 0 10px;
+    }
+    .q-detail {
+      border: 1px solid var(--line-soft);
+      border-left: 3px solid var(--accent);
+      border-radius: 8px;
+      background: var(--surface-2);
+      padding: 15px 17px;
+      margin-bottom: 11px;
+    }
+    .q-detail h4 {
+      font-family: "Press Start 2P", monospace;
+      font-size: 9px;
+      color: var(--accent);
+      margin: 0 0 10px;
+      line-height: 1.6;
+    }
+    .q-detail p { margin: 0 0 10px; }
+    .q-detail img {
+      max-width: 230px; max-height: 150px; display: block;
+      margin: 10px 0; border: 1px solid var(--line); border-radius: 6px;
+    }
+    .q-detail .opt { padding: 1px 0; color: var(--dim); }
+    .q-detail .opt.is-correct { color: var(--ok-ink); }
+    .q-detail .part { padding: 1px 0; }
+    .q-detail .part b { color: var(--dim); font-weight: normal; }
+
+    ul.plain { margin: 0; padding-left: 20px; }
+    ul.plain li { margin-bottom: 6px; }
+
+    /* ---------- sign-in gate ---------- */
+    #gate { max-width: 380px; margin: 14vh auto 0; }
+    #gate .card { padding: 26px 24px; }
+    #gate .brand { font-size: 14px; margin-bottom: 14px; }
+    #gate .error { color: var(--bad-ink); min-height: 22px; margin: 8px 0 0; }
+    #gate form { margin-top: 16px; }
+    #gate button { width: 100%; margin-top: 12px; padding: 13px; font-size: 10px; }
+
+    #panel[hidden], #gate[hidden] { display: none; }
+
+    @media (max-width: 560px) {
+      body { padding: 18px 13px 44px; }
+      .card { padding: 16px 15px; }
+      .masthead { gap: 12px; }
+      .q-detail img { max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ============== SIGN IN ==============
+       Not real security: this is a client-side check, and anyone who views
+       the page source can read ADMIN_PASSWORD in firebase-config.js. It
+       keeps casual visitors away from the Reset button, nothing more. -->
+  <div id="gate">
+    <div class="card">
+      <p class="pixel brand">QUIZ://01 — ADMIN</p>
+      <p class="greeting pixel">Welcome back, Quiz&nbsp;Master!</p>
+      <p class="muted">Sign in to manage today's quiz.</p>
+
+      <form id="gate-form">
+        <label class="field-label" for="gate-password">PASSWORD</label>
+        <input type="password" id="gate-password" autocomplete="current-password" autofocus>
+        <p class="error" id="gate-error"></p>
+        <button type="submit" class="primary pixel">▶ SIGN IN</button>
+      </form>
+
+      <p class="prose muted" style="margin-top:18px">
+        This only deters casual visitors — it isn't real protection. Keep it to a password you
+        wouldn't mind others seeing, set in <code>firebase-config.js</code>.
+      </p>
+    </div>
+  </div>
+
+  <!-- ============== MAIN PANEL ============== -->
+  <div class="wrap" id="panel" hidden>
+
+    <div class="masthead">
+      <div>
+        <p class="pixel brand">QUIZ://01 — ADMIN</p>
+        <p class="greeting pixel">Welcome back, Quiz&nbsp;Master!</p>
+        <p class="today" id="admin-today">—</p>
+      </div>
+      <div class="masthead-actions">
+        <button id="btn-theme" class="icon" title="Switch between dark and light" aria-label="Switch theme">☾</button>
+        <button id="btn-signout" class="pixel">SIGN OUT</button>
+      </div>
+    </div>
+
+    <!-- ---------- 1. GOOGLE SHEET ---------- -->
+    <section class="card">
+      <div class="card-head">
+        <h2 class="section-title pixel">GOOGLE SHEET</h2>
+        <button id="btn-refetch" class="pixel">↻ FETCH TODAY'S QUESTIONS</button>
+      </div>
+
+      <div id="sheet-unconfigured" class="banner banner--warn" hidden>
+        No Sheet ID is set yet. Add <code>SHEET_ID</code> in <code>firebase-config.js</code>,
+        then reload this page. Until then, the game plays its three built-in sample questions.
+      </div>
+
+      <div id="sheet-configured" hidden>
+        <div class="row" style="margin-bottom:16px; align-items:flex-end">
+          <div style="flex:1; min-width:240px">
+            <label class="field-label" for="sheet-id-display">SHEET ID — SET IN FIREBASE-CONFIG.JS</label>
+            <input type="text" id="sheet-id-display" readonly class="mono">
+          </div>
+          <a id="sheet-open-link" href="#" target="_blank" rel="noopener">Open this sheet ↗</a>
+        </div>
+
+        <div id="sheet-status"></div>
+
+        <div id="sheet-rows-wrap" hidden>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr><th>DATE</th><th>STATUS</th><th>Q1</th><th>Q2</th><th>Q3</th><th>CHECK</th></tr>
+              </thead>
+              <tbody id="sheet-rows"></tbody>
+            </table>
+          </div>
+
+          <p class="preview-label">▚ PREVIEW — WHAT PLAYERS WILL SEE</p>
+          <div id="sheet-detail"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- 2. LEADERBOARD ---------- -->
+    <section class="card">
+      <div class="card-head">
+        <h2 class="section-title pixel">TODAY'S LEADERBOARD</h2>
+        <div class="row">
+          <button id="btn-export" class="pixel">↓ EXPORT CSV</button>
+          <button id="btn-reset" class="danger pixel">RESET TODAY</button>
+        </div>
+      </div>
+      <p class="note">Resetting clears today's scores only — it never changes anyone's all-time total.</p>
+
+      <div id="firebase-unconfigured" class="banner banner--warn" hidden>
+        Firebase isn't set up yet. Add your project's details under <code>FIREBASE_CONFIG</code> in
+        <code>firebase-config.js</code>, then reload this page.
+      </div>
+
+      <div id="board-wrap" hidden>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>#</th><th>NAME</th><th>POINTS</th><th>TIME</th><th></th></tr></thead>
+            <tbody id="today-rows"></tbody>
+          </table>
+        </div>
+        <p class="muted" id="today-empty" style="margin-top:12px" hidden>Nobody has played today yet.</p>
+      </div>
+
+      <p class="preview-label">▚ ALL-TIME TOTALS — READ ONLY, NOT TOUCHED BY RESET</p>
+      <div id="alltime-wrap" hidden>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>NAME</th><th>TOTAL POINTS</th><th>DAYS PLAYED</th></tr></thead>
+            <tbody id="alltime-rows"></tbody>
+          </table>
+        </div>
+        <p class="muted" id="alltime-empty" style="margin-top:12px" hidden>No all-time scores yet.</p>
+      </div>
+    </section>
+
+    <!-- ---------- 3. REFERENCE (deliberately quieter) ---------- -->
+    <section class="card card--quiet">
+      <h2 class="section-title pixel" style="margin-bottom:14px">
+        <span class="info-dot" title="Reference — how to fill in the sheet">i</span>
+        HOW THE GOOGLE SHEET WORKS
+      </h2>
+
+      <div class="prose">
+        <p style="margin-top:0">One row per day. Columns, per question (Q1, Q2 and Q3 each have their own):</p>
+        <ul class="plain">
+          <li><code>date</code> — <code>YYYY-MM-DD</code>. A row only reaches players when this is today's date.</li>
+          <li><code>status</code> — <code>draft</code>, <code>live</code> or <code>archived</code>. Only <code>live</code> reaches players;
+            open <code>index.html?preview=true</code> to rehearse a <code>draft</code> yourself.</li>
+          <li><code>qN_text</code>, <code>qN_type</code> (<code>text</code> or <code>mcq</code>), <code>qN_points</code>,
+            <code>qN_answers</code>, <code>qN_opt_a..d</code> (multiple choice only), <code>qN_image</code> (optional).</li>
+          <li>Multiple choice: put the right answer's letter (A–D) or its exact text in <code>qN_answers</code>.</li>
+          <li>A typed question with several parts (e.g. "name both X and Y"): <code>qN_points</code> like <code>2+2</code>,
+            <code>qN_answers</code> like <code>mercury | venus</code> — one number per part, separated by <code>|</code>.</li>
+          <li>Pictures: a file path (<code>images/q1.png</code>), a Google Drive share link, or any <code>https://</code> address.</li>
+        </ul>
+
+        <p style="margin-top:14px">
+          Templates with these columns already filled in:
+          <a href="sample-sheet.xlsx" download>sample-sheet.xlsx</a> (with dropdowns and filters) ·
+          <a href="sample-sheet.csv" download>sample-sheet.csv</a> (plain text)
+        </p>
+
+        <p style="margin-bottom:0">
+          This page only reads your settings — it can't change them. To change the Sheet ID, the Firebase
+          project, or the password, edit <code>firebase-config.js</code> directly.
+        </p>
+      </div>
+    </section>
+  </div>
+
+  <script src="firebase-config.js"></script>
+  <script src="app.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

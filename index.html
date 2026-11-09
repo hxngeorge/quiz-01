@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0a">
+  <title>QUIZ://01</title>
+
+  <!-- Pixel fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323:wght@400&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-page="player">
+  <main class="page">
+
+    <!-- ===================== TV CABINET ===================== -->
+    <div class="tv">
+
+      <!-- Recessed ring around the glass -->
+      <div class="tv__bezel">
+
+        <!-- The CRT glass (scanlines + vignette come from CSS ::before/::after) -->
+        <div class="crt" id="crt">
+
+          <!-- Background decoration: pixel stars + floating icons -->
+          <div class="crt__stars" aria-hidden="true"></div>
+          <div class="crt__deco" aria-hidden="true">
+            <span class="deco deco--block deco--green">?</span>
+            <span class="deco deco--block deco--pink">!</span>
+            <span class="deco deco--text">&lt;&lt;</span>
+            <span class="deco deco--text">&gt;&gt;</span>
+            <span class="deco deco--text text-green">+</span>
+            <span class="deco deco--text text-pink">✦</span>
+          </div>
+
+          <div class="crt__inner">
+            <!-- Only visible when the admin opens the page with ?preview=true
+                 and today's questions are still a draft. It lives outside the
+                 panel so it stays put when a small screen scrolls. -->
+            <p class="preview-banner" id="preview-banner" hidden>PREVIEW · SCORES NOT SAVED</p>
+
+            <!-- All game screens render inside this one panel -->
+            <div class="panel" id="panel-game">
+
+              <!-- Sound on/off. The choice is remembered in this browser. -->
+              <button class="icon-btn sound-toggle" id="sound-toggle" aria-label="Toggle sound" aria-pressed="true">🔊</button>
+
+              <!-- Shown for the moment it takes to fetch today's questions.
+                   app.js swaps it for the real opening screen. -->
+              <section class="screen is-active" id="screen-boot">
+                <div class="stack">
+                  <div class="onboard__head">
+                    <h1 class="title">QUIZ://01<span class="title__cursor"></span></h1>
+                    <p class="boot__status" id="boot-status" role="status">LOADING<span class="boot__dots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span></p>
+                  </div>
+                </div>
+              </section>
+
+              <!-- ── SCREEN 0: NO QUIZ TODAY ──
+                   Shown when the Google Sheet has no live row for today. -->
+              <section class="screen" id="screen-no-quiz">
+                <div class="stack">
+                  <div class="onboard__head">
+                    <p class="kicker">═ DAILY QUIZ ═</p>
+                    <h1 class="title">QUIZ://01<span class="title__cursor"></span></h1>
+                    <p class="pill" id="no-quiz-date">—</p>
+                  </div>
+
+                  <div class="frame">
+                    <span class="tag">NO QUIZ TODAY <b>&gt;&gt;</b></span>
+                    <p class="played__score">CHECK BACK LATER</p>
+                    <p class="played__note">TODAY'S QUESTIONS AREN'T LIVE YET</p>
+                  </div>
+
+                  <button class="btn btn--pink" id="btn-noquiz-leaderboard">▷ LEADERBOARD</button>
+                </div>
+              </section>
+
+              <!-- ── SCREEN 1: ONBOARDING ── -->
+              <section class="screen" id="screen-onboarding">
+                <div class="stack">
+
+                  <div class="onboard__head">
+                    <p class="kicker">═ DAILY QUIZ ═</p>
+                    <h1 class="title">QUIZ://01<span class="title__cursor"></span></h1>
+                    <p class="pill" id="today-date">MON 09 NOV 2026</p>
+                  </div>
+
+                  <div class="field">
+                    <label class="label" for="name-input">[ ENTER YOUR NAME ]</label>
+                    <input class="input" id="name-input" type="text" placeholder="PLAYER_1" maxlength="20" autocomplete="off">
+                    <p class="msg-error" id="name-error"></p>
+                  </div>
+
+                  <div class="btn-row">
+                    <button class="btn" id="btn-start">▶ READY TO EMBARK</button>
+                    <button class="btn btn--pink" id="btn-leaderboard">▷ LEADERBOARD</button>
+                  </div>
+
+                  <!-- Today's top 3. app.js fills this in from the leaderboard. -->
+                  <div class="frame top3">
+                    <span class="tag">TODAY'S TOP 3 <b>&gt;&gt;</b></span>
+                    <ol class="top3__list" id="top3-list">
+                      <li class="top3__empty">LOADING…</li>
+                    </ol>
+                  </div>
+
+                  <p class="onboard__count">PLAYERS TODAY: <b id="player-count">–</b></p>
+                </div>
+              </section>
+
+              <!-- ── SCREEN 1b: ALREADY PLAYED ──
+                   Shown instead of the name form when this browser has
+                   already finished today's quiz. -->
+              <section class="screen" id="screen-played">
+                <div class="stack">
+                  <div class="onboard__head">
+                    <p class="kicker">═ DAILY QUIZ ═</p>
+                    <h1 class="title">QUIZ://01<span class="title__cursor"></span></h1>
+                    <p class="pill" id="played-date">—</p>
+                  </div>
+
+                  <div class="frame">
+                    <span class="tag">ALREADY PLAYED TODAY <b>&gt;&gt;</b></span>
+                    <p class="played__score" id="played-score">—</p>
+                    <p class="played__time" id="played-time"></p>
+                    <p class="played__note">COME BACK TOMORROW FOR 3 NEW QUESTIONS</p>
+                  </div>
+
+                  <button class="btn btn--pink" id="btn-played-leaderboard">▷ SEE LEADERBOARD</button>
+                </div>
+              </section>
+
+              <!-- ── SCREEN 2: QUESTION ── -->
+              <section class="screen" id="screen-question">
+                <div class="stack">
+
+                  <!-- Top bar: which question, progress dots, running clock -->
+                  <div class="qbar">
+                    <span class="qbar__num" id="q-counter">Q.01 / 03</span>
+                    <span class="qbar__dots" id="q-dots" aria-hidden="true">●○○</span>
+                    <span class="qbar__time">⏱ <b id="q-timer">00:00</b></span>
+                  </div>
+                  <div class="divider"></div>
+
+                  <h2 class="question" id="q-text">—</h2>
+                  <p class="q-hint" id="q-hint" hidden></p>
+
+                  <!-- Optional picture for this question (from the Sheet's
+                       image column). Hidden when there isn't one. -->
+                  <figure class="q-image" id="q-image" hidden>
+                    <img id="q-image-img" alt="Picture for this question" decoding="async">
+                    <figcaption class="q-image__fail" id="q-image-fail" hidden>IMAGE UNAVAILABLE</figcaption>
+                  </figure>
+
+                  <!-- Typed answers -->
+                  <div class="field" id="q-type-text" hidden>
+                    <!-- One box per answer part; app.js builds them -->
+                    <div class="answer-inputs" id="answer-inputs"></div>
+                    <p class="msg-error" id="answer-error"></p>
+                    <button class="btn" id="btn-submit">▶ SUBMIT</button>
+                  </div>
+
+                  <!-- Multiple choice: filled in by app.js -->
+                  <div class="options" id="q-type-mcq" hidden></div>
+                </div>
+              </section>
+
+              <!-- ── SCREEN 3: CORRECT ── -->
+              <section class="screen screen--verdict" id="screen-correct">
+                <div class="stack">
+                  <div class="verdict verdict--right">
+                    <span class="verdict__burst" aria-hidden="true"></span>
+                    <span class="verdict__mark" aria-hidden="true">✦</span>
+                    <span class="verdict__word">CORRECT</span>
+                    <span class="verdict__mark" aria-hidden="true">✦</span>
+                  </div>
+
+                  <p class="points" id="correct-points">+0 PTS</p>
+                  <p class="total">TOTAL <b id="correct-total">0</b> PTS</p>
+                  <button class="btn" id="btn-next-correct">▶ NEXT QUESTION →</button>
+                </div>
+              </section>
+
+              <!-- ── SCREEN 3b: PARTLY RIGHT ──
+                   Some answer parts right, some missed. -->
+              <section class="screen screen--verdict" id="screen-partial">
+                <div class="stack">
+                  <div class="verdict verdict--partial">
+                    <span class="verdict__mark verdict__mark--half" aria-hidden="true"></span>
+                    <span class="verdict__word">PARTLY RIGHT</span>
+                  </div>
+
+                  <p class="points" id="partial-points">+0 PTS</p>
+                  <p class="total"><b id="partial-count">1 OF 2</b> CORRECT</p>
+
+                  <div class="frame reveal">
+                    <span class="tag">YOU MISSED <b>&gt;&gt;</b></span>
+                    <p class="reveal__answer" id="partial-missed">—</p>
+                  </div>
+
+                  <p class="total">TOTAL <b id="partial-total">0</b> PTS</p>
+                  <button class="btn" id="btn-next-partial">▶ NEXT QUESTION →</button>
+                </div>
+              </section>
+
+              <!-- ── SCREEN 4: WRONG ── -->
+              <section class="screen screen--verdict" id="screen-wrong">
+                <div class="stack">
+                  <div class="verdict verdict--wrong">
+                    <span class="verdict__mark verdict__mark--x" aria-hidden="true"></span>
+                    <span class="verdict__word">WRONG</span>
+                  </div>
+
+                  <p class="points points--zero">+0 PTS</p>
+
+                  <div class="frame reveal">
+                    <span class="tag">THE ANSWER WAS <b>&gt;&gt;</b></span>
+                    <p class="reveal__answer" id="wrong-answer">—</p>
+                  </div>
+
+                  <p class="total">TOTAL <b id="wrong-total">0</b> PTS</p>
+                  <button class="btn" id="btn-next-wrong">▶ NEXT QUESTION →</button>
+                </div>
+              </section>
+
+              <!-- ── SCREEN 5: FINAL RESULTS ── -->
+              <section class="screen" id="screen-results">
+                <div class="stack">
+                  <h2 class="banner">══ GAME COMPLETE ══</h2>
+
+                  <div class="frame results">
+                    <span class="tag">YOUR RUN <b>&gt;&gt;</b></span>
+
+                    <dl class="results__list">
+                      <div class="results__row">
+                        <dt>YOUR SCORE</dt>
+                        <dd><b id="result-score">0</b> / <span id="result-max">0</span></dd>
+                      </div>
+                      <div class="results__row">
+                        <dt>YOUR TIME</dt>
+                        <dd id="result-time">0M 0S</dd>
+                      </div>
+                      <div class="results__row">
+                        <dt>YOUR RANK</dt>
+                        <dd class="results__rank">#<b id="result-rank">—</b> TODAY</dd>
+                      </div>
+                    </dl>
+                  </div>
+
+                  <button class="btn" id="btn-results-leaderboard">▶ SEE LEADERBOARD</button>
+                </div>
+              </section>
+
+              <!-- ── SCREEN 6: LEADERBOARD ── -->
+              <section class="screen" id="screen-leaderboard">
+                <div class="stack">
+                  <h2 class="banner">══ LEADERBOARD ══</h2>
+
+                  <div class="tabs" role="tablist">
+                    <button class="tab is-selected" id="tab-today" role="tab" aria-selected="true">TODAY</button>
+                    <button class="tab" id="tab-alltime" role="tab" aria-selected="false">ALL TIME</button>
+                  </div>
+
+                  <div class="board">
+                    <table class="table" id="board-table">
+                      <thead id="board-head"></thead>
+                      <tbody id="board-body"></tbody>
+                    </table>
+                    <p class="board__empty" id="board-empty" hidden>NOBODY HAS PLAYED YET TODAY</p>
+                  </div>
+
+                  <button class="btn btn--pink" data-home>◄ HOME</button>
+                </div>
+              </section>
+
+            </div>
+          </div>
+
+          <!-- Overlays: glass glare + screen-transition flash -->
+          <div class="crt__glare"></div>
+          <div class="crt__flash" id="crt-flash"></div>
+        </div>
+      </div>
+
+      <!-- Deck under the screen (hidden on phones) -->
+      <div class="tv__deck" aria-hidden="true">
+        <div class="tv__stickers">
+          <div class="sticker-tape">QUIZ://01<small>daily ch. · 3 questions</small></div>
+          <div class="sticker-dot sticker-dot--pink">PLAY<br>DAILY</div>
+          <div class="sticker-dot sticker-dot--green sticker-dot--star"></div>
+        </div>
+        <div class="tv__right">
+          <div class="tv__knobs">
+            <div class="tv__led"></div>
+            <div class="tv__knob tv__knob--pink"></div>
+            <div class="tv__knob tv__knob--white"></div>
+          </div>
+        </div>
+      </div>
+      <div class="tv__vents" aria-hidden="true"></div>
+
+      <div class="tv__feet" aria-hidden="true"></div>
+    </div>
+
+  </main>
+
+  <!-- If the game can't start, say so instead of showing LOADING forever.
+       This runs first, so it still works when app.js is the thing that broke. -->
+  <script>
+    function bootFailed() {
+      var status = document.getElementById("boot-status");
+      var boot = document.getElementById("screen-boot");
+      if (!status || !boot || !boot.classList.contains("is-active")) return;   // already started fine
+      status.textContent = "COULDN'T START THE QUIZ — TRY RELOADING THE PAGE";
+      status.classList.add("boot__status--error");
+    }
+    window.addEventListener("error", bootFailed);        // app.js crashed while starting
+    setTimeout(bootFailed, 15000);                       // ...or never got going at all
+  </script>
+
+  <!-- Your settings first, then the game. Both are ordinary scripts (not
+       modules) so the page also works when opened straight from the folder. -->
+  <script src="firebase-config.js"></script>
+  <script src="app.js" onerror="bootFailed()"></script>
+</body>
+</html>
