@@ -70,6 +70,34 @@ function toggleTheme() {
 
 
 /* =========================================================================
+   CONFIRMATION OVERLAY
+   One shared popup for every destructive action on this page (remove a
+   player, reset today, remove an all-time total) instead of the browser's
+   own confirm() — same pattern as the game's "quit the game?" popup.
+   ========================================================================= */
+
+let confirmAction = null;   // the function to run if OK is clicked
+
+function openConfirm(title, sub, onConfirm) {
+  document.getElementById("confirm-title").textContent = title;
+  document.getElementById("confirm-sub").textContent = sub;
+  confirmAction = onConfirm;
+  document.getElementById("confirm-overlay").classList.add("is-active");
+}
+
+function closeConfirm() {
+  document.getElementById("confirm-overlay").classList.remove("is-active");
+  confirmAction = null;
+}
+
+async function runConfirmedAction() {
+  const action = confirmAction;
+  closeConfirm();
+  if (action) await action();
+}
+
+
+/* =========================================================================
    SIGN IN
    ========================================================================= */
 
@@ -363,6 +391,11 @@ async function deleteTodayScore(id) {
   await deleteDoc(doc(firebase.db, "daily", todayKey(), "scores", id));
 }
 
+async function deleteAllTimeScore(id) {
+  const { doc, deleteDoc } = firebase.fns;
+  await deleteDoc(doc(firebase.db, "alltime", id));
+}
+
 let todaysRows = [];   // kept at module scope so Export can read exactly what's on screen
 
 async function loadTodayTable() {
@@ -389,13 +422,18 @@ async function loadTodayTable() {
   });
 
   body.querySelectorAll("[data-remove]").forEach(function (btn) {
-    btn.addEventListener("click", async function () {
+    btn.addEventListener("click", function () {
       const row = todaysRows.find(function (r) { return r.id === btn.dataset.remove; });
       if (!row) return;
-      if (!confirm('Remove ' + row.name + '’s score for today? This can’t be undone.')) return;
-      btn.disabled = true;
-      await deleteTodayScore(row.id);
-      await loadTodayTable();
+      openConfirm(
+        "REMOVE TODAY'S SCORE?",
+        row.name + "'s score for today will be removed. This can't be undone.",
+        async function () {
+          btn.disabled = true;
+          await deleteTodayScore(row.id);
+          await loadTodayTable();
+        }
+      );
     });
   });
 }
@@ -418,32 +456,53 @@ async function loadAllTimeTable() {
     tr.innerHTML =
       "<td>" + escapeHtml(row.name) + "</td>" +
       '<td class="num">' + (row.total_points || 0) + "</td>" +
-      '<td class="num">' + (row.days_played || 0) + "</td>";
+      '<td class="num">' + (row.days_played || 0) + "</td>" +
+      '<td><button class="small" data-remove-alltime="' + escapeHtml(row.id) + '" ' +
+      'title="Remove this player’s entire all-time total">Remove</button></td>';
     body.appendChild(tr);
+  });
+
+  body.querySelectorAll("[data-remove-alltime]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      const row = rows.find(function (r) { return r.id === btn.dataset.removeAlltime; });
+      if (!row) return;
+      openConfirm(
+        "REMOVE ALL-TIME TOTAL?",
+        row.name + "'s entire all-time total (" + (row.total_points || 0) + " pts over " +
+          (row.days_played || 0) + " day" + (row.days_played === 1 ? "" : "s") +
+          ") will be removed. This can't be undone and does not affect today's scores.",
+        async function () {
+          btn.disabled = true;
+          await deleteAllTimeScore(row.id);
+          await loadAllTimeTable();
+        }
+      );
+    });
   });
 }
 
-async function resetTodaysScores() {
+function resetTodaysScores() {
   if (todaysRows.length === 0) {
     alert("There's nothing to reset — nobody has played today yet.");
     return;
   }
-  const sure = confirm(
-    "Delete all " + todaysRows.length + " of today's scores?\n\n" +
-    "This can't be undone. All-Time totals are not affected."
-  );
-  if (!sure) return;
-
-  const btn = document.getElementById("btn-reset");
-  btn.disabled = true;
-  try {
-    for (const row of todaysRows) {
-      await deleteTodayScore(row.id);
+  openConfirm(
+    "RESET TODAY'S SCORES?",
+    "All " + todaysRows.length + " of today's scores will be deleted. This can't be undone. " +
+      "All-time totals are not affected.",
+    async function () {
+      const btn = document.getElementById("btn-reset");
+      btn.disabled = true;
+      try {
+        for (const row of todaysRows) {
+          await deleteTodayScore(row.id);
+        }
+        await loadTodayTable();
+      } finally {
+        btn.disabled = false;
+      }
     }
-    await loadTodayTable();
-  } finally {
-    btn.disabled = false;
-  }
+  );
 }
 
 function exportTodaysResults() {
@@ -499,6 +558,8 @@ function initAdmin() {
   document.getElementById("btn-refetch").addEventListener("click", fetchAndRenderSheet);
   document.getElementById("btn-reset").addEventListener("click", resetTodaysScores);
   document.getElementById("btn-export").addEventListener("click", exportTodaysResults);
+  document.getElementById("confirm-cancel").addEventListener("click", closeConfirm);
+  document.getElementById("confirm-ok").addEventListener("click", runConfirmedAction);
 
   if (isUnlocked()) {
     showPanel();
