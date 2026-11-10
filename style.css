@@ -871,9 +871,10 @@ ol {
 /* The question itself */
 .question {
   margin: clamp(6px, 1.4cqi, 16px) 0;
-  font-family: var(--font-pixel);
-  font-size: clamp(13px, 2.3cqi, 26px);
-  line-height: 1.75;
+  font-family: var(--font-body);   /* VT323 — reads more clearly than the pixel font at length */
+  font-size: clamp(18px, 3cqi, 32px);
+  letter-spacing: 0.5px;
+  line-height: 1.5;
   color: var(--white);
   text-align: center;
 }
@@ -905,16 +906,16 @@ ol {
 
 /* Long questions (over 60 characters) use smaller type */
 .question--long {
-  font-size: clamp(11px, 1.8cqi, 21px);
-  line-height: 1.6;
+  font-size: clamp(15px, 2.3cqi, 25px);
+  line-height: 1.45;
 }
 
 /* Paragraph-length questions (over 200 characters): smaller still, but only on
    wide screens, where height is the tight dimension. Phones have room to spare. */
 @container (min-width: 700px) {
   .question--xlong {
-    font-size: clamp(10px, 1.5cqi, 17px);
-    line-height: 1.5;
+    font-size: clamp(13px, 1.9cqi, 20px);
+    line-height: 1.4;
   }
 }
 
