@@ -1842,6 +1842,22 @@ async function init() {
   document.getElementById("btn-next-wrong").addEventListener("click", advance);
   document.getElementById("btn-next-partial").addEventListener("click", advance);
 
+  // --- Quit confirmation ---
+  document.getElementById("btn-exit").addEventListener("click", function () {
+    playClickSound();
+    document.getElementById("exit-modal").classList.add("is-active");
+  });
+  document.getElementById("btn-exit-cancel").addEventListener("click", function () {
+    playClickSound();
+    document.getElementById("exit-modal").classList.remove("is-active");
+  });
+  document.getElementById("btn-exit-confirm").addEventListener("click", function () {
+    playClickSound();
+    document.getElementById("exit-modal").classList.remove("is-active");
+    stopClock();       // the clock keeps running behind the confirmation screen
+    goHome();          // nothing has been saved yet, so quitting just discards the run
+  });
+
   // Enter in the name box is the same as pressing the green button
   const input = document.getElementById("name-input");
   if (input) {
