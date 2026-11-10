@@ -519,7 +519,13 @@ ol {
 /* Content column: keeps everything narrow and centred on the wide screen */
 .stack {
   width: 100%;
-  max-width: max(560px, 56cqi);   /* grows on very large screens */
+  /* Was capped at 560px, which left a lot of unused space on the sides on a
+     laptop/tablet-sized screen (it only ever grows past that on very wide
+     monitors). Letting it use most of the glass's width means longer
+     questions wrap onto fewer lines instead of sitting in a narrow column.
+     On a phone this never binds anyway — the glass itself is narrower than
+     even the old 560px floor, so width:100% already decides the size there. */
+  max-width: max(560px, 86cqi);
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -545,12 +551,63 @@ ol {
   color: var(--green);
 }
 
-/* Sound toggle sits in the top-right corner of the screen */
+/* Sound toggle sits in the top-right corner, with the exit button (below)
+   taking the actual corner — reading left to right: sound, then exit. */
 .sound-toggle {
+  position: absolute;
+  top: clamp(14px, 2.5cqi, 26px);
+  right: clamp(60px, 7.8cqi, 80px);
+  z-index: 2;
+}
+
+/* Exit the quiz. Only appears once a quiz is actually running — the same
+   moment the corner decorations dim (.crt.is-playing) — so it's never
+   sitting there with nothing to exit from. */
+.exit-btn.exit-btn {
   position: absolute;
   top: clamp(14px, 2.5cqi, 26px);
   right: clamp(14px, 3cqi, 32px);
   z-index: 2;
+  display: none;
+}
+.crt.is-playing .exit-btn.exit-btn {
+  display: grid;
+}
+
+/* --- Quit confirmation --- */
+.modal-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;      /* above the flash, glare and every screen */
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.75);
+}
+.modal-overlay.is-active {
+  display: flex;
+}
+.modal-box {
+  width: min(80%, 460px);
+  text-align: center;
+  background: var(--screen-bg);
+}
+.modal-title {
+  font-family: var(--font-pixel);
+  font-size: clamp(14px, 2.6cqi, 22px);
+  line-height: 1.6;
+  color: var(--pink);
+  text-shadow: var(--glow-pink);
+  margin-bottom: 14px;
+}
+.modal-sub {
+  font-size: clamp(17px, 2cqi, 22px);
+  color: var(--dim);
+  margin-bottom: 18px;
+}
+.modal-box .btn-row {
+  gap: 12px;
 }
 
 
@@ -872,7 +929,9 @@ ol {
 .question {
   margin: clamp(6px, 1.4cqi, 16px) 0;
   font-family: var(--font-body);   /* VT323 — reads more clearly than the pixel font at length */
-  font-size: clamp(18px, 3cqi, 32px);
+  /* Floor raised to 20px: the app's own body text runs 22px+, so anything
+     smaller than that reads as noticeably small next to everything else. */
+  font-size: clamp(20px, 3.2cqi, 34px);
   letter-spacing: 0.5px;
   line-height: 1.5;
   color: var(--white);
@@ -904,9 +963,12 @@ ol {
   color: var(--dim);
 }
 
-/* Long questions (over 60 characters) use smaller type */
+/* Long questions (over 60 characters) use smaller type — but the floor stays
+   at 18px. Below that it stopped being "a bit smaller" and started being
+   genuinely hard to read, especially on a phone where this is the class
+   that actually applies (the --xlong rule below is desktop/tablet only). */
 .question--long {
-  font-size: clamp(15px, 2.3cqi, 25px);
+  font-size: clamp(18px, 2.6cqi, 27px);
   line-height: 1.45;
 }
 
@@ -914,7 +976,7 @@ ol {
    wide screens, where height is the tight dimension. Phones have room to spare. */
 @container (min-width: 700px) {
   .question--xlong {
-    font-size: clamp(13px, 1.9cqi, 20px);
+    font-size: clamp(16px, 2.1cqi, 22px);
     line-height: 1.4;
   }
 }
@@ -965,6 +1027,12 @@ ol {
 @container (max-width: 700px) {
   .q-image img {
     max-height: min(56cqi, 230px);
+  }
+  /* A long question now takes noticeably more room (its font floor went up),
+     so when a picture question is ALSO a long one, the picture gives back
+     some of that space rather than pushing the answer box off screen. */
+  .question--long ~ .q-image img {
+    max-height: min(42cqi, 170px);
   }
   /* A full screen of content reaches the top corner, where the sound button
      sits, so keep the timer clear of it */
@@ -1742,6 +1810,22 @@ ol {
   /* No vents or feet on phones */
   .tv__vents,
   .tv__feet {
+    display: none;
+  }
+
+  /* Phone only: pin the question number + timer to the screen's top-left
+     corner, mirroring the sound/exit icons already pinned top-right, instead
+     of sharing a row at the top of the stack. The progress dots and the rule
+     under them drop — a screen this small has no room to spare for either. */
+  #screen-question .qbar {
+    position: absolute;
+    top: clamp(14px, 2.5cqi, 26px);
+    left: clamp(14px, 3cqi, 32px);
+    z-index: 2;
+    gap: 10px;
+  }
+  #screen-question .qbar__dots,
+  #screen-question .divider {
     display: none;
   }
 }
