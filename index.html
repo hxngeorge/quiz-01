@@ -48,6 +48,10 @@
               <!-- Sound on/off. The choice is remembered in this browser. -->
               <button class="icon-btn sound-toggle" id="sound-toggle" aria-label="Toggle sound" aria-pressed="true">🔊</button>
 
+              <!-- Quit the quiz. Only shown while a quiz is actually in
+                   progress (same moment the corner decorations dim). -->
+              <button class="icon-btn exit-btn" id="btn-exit" aria-label="Exit the quiz">✕</button>
+
               <!-- Shown for the moment it takes to fetch today's questions.
                    app.js swaps it for the real opening screen. -->
               <section class="screen is-active" id="screen-boot">
@@ -283,6 +287,19 @@
           <!-- Overlays: glass glare + screen-transition flash -->
           <div class="crt__glare"></div>
           <div class="crt__flash" id="crt-flash"></div>
+
+          <!-- Quit confirmation. Sits above everything else on the glass. -->
+          <div class="modal-overlay" id="exit-modal">
+            <div class="frame modal-box">
+              <span class="tag">CONFIRM <b>&gt;&gt;</b></span>
+              <h2 class="modal-title">QUIT THE GAME?</h2>
+              <p class="modal-sub">Your points for today will be lost and can't be recovered.</p>
+              <div class="btn-row">
+                <button class="btn" id="btn-exit-cancel">▶ CONTINUE</button>
+                <button class="btn btn--pink" id="btn-exit-confirm">✕ QUIT</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
