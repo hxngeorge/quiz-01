@@ -264,7 +264,9 @@
     #sheet-rows tr { cursor: pointer; }
     tbody tr:hover { background: var(--row-hover); }
     tbody tr.is-selected, tbody tr.is-selected:hover { background: var(--row-pick); }
-    td.num { text-align: right; white-space: nowrap; }
+    /* Numeric columns: header and its data share one alignment, so a short
+       number doesn't drift away from the word above it. */
+    th.num, td.num { text-align: center; white-space: nowrap; }
 
     /* ---------- pills & banners ---------- */
     .pill {
@@ -338,6 +340,36 @@
     #gate button { width: 100%; margin-top: 12px; padding: 13px; font-size: 10px; }
 
     #panel[hidden], #gate[hidden] { display: none; }
+
+    /* ---------- confirmation overlay (used for destructive actions) ---------- */
+    .confirm-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(0, 0, 0, 0.55);
+    }
+    .confirm-overlay.is-active { display: flex; }
+    .confirm-box {
+      width: min(92%, 420px);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 24px 22px;
+      box-shadow: var(--shadow);
+    }
+    .confirm-box h3 {
+      font-family: "Press Start 2P", monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--bad-ink);
+      margin: 0 0 12px;
+    }
+    .confirm-box p { color: var(--dim); margin: 0 0 20px; }
+    .confirm-box .row { justify-content: flex-end; }
 
     @media (max-width: 560px) {
       body { padding: 18px 13px 44px; }
@@ -446,18 +478,18 @@
       <div id="board-wrap" hidden>
         <div class="table-scroll">
           <table>
-            <thead><tr><th>#</th><th>NAME</th><th>POINTS</th><th>TIME</th><th></th></tr></thead>
+            <thead><tr><th>#</th><th>NAME</th><th class="num">POINTS</th><th class="num">TIME</th><th></th></tr></thead>
             <tbody id="today-rows"></tbody>
           </table>
         </div>
         <p class="muted" id="today-empty" style="margin-top:12px" hidden>Nobody has played today yet.</p>
       </div>
 
-      <p class="preview-label">▚ ALL-TIME TOTALS — READ ONLY, NOT TOUCHED BY RESET</p>
+      <p class="preview-label">▚ ALL-TIME TOTALS</p>
       <div id="alltime-wrap" hidden>
         <div class="table-scroll">
           <table>
-            <thead><tr><th>NAME</th><th>TOTAL POINTS</th><th>DAYS PLAYED</th></tr></thead>
+            <thead><tr><th>NAME</th><th class="num">TOTAL POINTS</th><th class="num">DAYS PLAYED</th><th></th></tr></thead>
             <tbody id="alltime-rows"></tbody>
           </table>
         </div>
@@ -498,6 +530,19 @@
         </p>
       </div>
     </section>
+  </div>
+
+  <!-- Shared confirmation overlay for destructive actions. Its text is
+       filled in by JS right before it's shown (see openConfirm()). -->
+  <div class="confirm-overlay" id="confirm-overlay">
+    <div class="confirm-box">
+      <h3 id="confirm-title">ARE YOU SURE?</h3>
+      <p id="confirm-sub"></p>
+      <div class="row">
+        <button id="confirm-cancel" class="pixel">CANCEL</button>
+        <button id="confirm-ok" class="danger pixel">REMOVE</button>
+      </div>
+    </div>
   </div>
 
   <script src="firebase-config.js"></script>
