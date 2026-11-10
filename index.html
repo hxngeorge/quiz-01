@@ -143,33 +143,41 @@
                 <div class="stack">
 
                   <!-- Top bar: which question, progress dots, running clock -->
-                  <div class="qbar">
-                    <span class="qbar__num" id="q-counter">Q.01 / 03</span>
-                    <span class="qbar__dots" id="q-dots" aria-hidden="true">●○○</span>
-                    <span class="qbar__time">⏱ <b id="q-timer">00:00</b></span>
-                  </div>
-                  <div class="divider"></div>
-
-                  <h2 class="question" id="q-text">—</h2>
-                  <p class="q-hint" id="q-hint" hidden></p>
-
-                  <!-- Optional picture for this question (from the Sheet's
-                       image column). Hidden when there isn't one. -->
-                  <figure class="q-image" id="q-image" hidden>
-                    <img id="q-image-img" alt="Picture for this question" decoding="async">
-                    <figcaption class="q-image__fail" id="q-image-fail" hidden>IMAGE UNAVAILABLE</figcaption>
-                  </figure>
-
-                  <!-- Typed answers -->
-                  <div class="field" id="q-type-text" hidden>
-                    <!-- One box per answer part; app.js builds them -->
-                    <div class="answer-inputs" id="answer-inputs"></div>
-                    <p class="msg-error" id="answer-error"></p>
-                    <button class="btn" id="btn-submit">▶ SUBMIT</button>
+                  <div class="q-head">
+                    <div class="qbar">
+                      <span class="qbar__num" id="q-counter">Q.01 / 03</span>
+                      <span class="qbar__dots" id="q-dots" aria-hidden="true">●○○</span>
+                      <span class="qbar__time">⏱ <b id="q-timer">00:00</b></span>
+                    </div>
+                    <div class="divider"></div>
                   </div>
 
-                  <!-- Multiple choice: filled in by app.js -->
-                  <div class="options" id="q-type-mcq" hidden></div>
+                  <!-- Group 1: the question and its picture stay together -->
+                  <div class="q-group">
+                    <h2 class="question" id="q-text">—</h2>
+                    <p class="q-hint" id="q-hint" hidden></p>
+
+                    <!-- Optional picture for this question (from the Sheet's
+                         image column). Hidden when there isn't one. -->
+                    <figure class="q-image" id="q-image" hidden>
+                      <img id="q-image-img" alt="Picture for this question" decoding="async">
+                      <figcaption class="q-image__fail" id="q-image-fail" hidden>IMAGE UNAVAILABLE</figcaption>
+                    </figure>
+                  </div>
+
+                  <!-- Group 2: the answer boxes and the submit button stay together -->
+                  <div class="a-group">
+                    <!-- Typed answers -->
+                    <div class="field" id="q-type-text" hidden>
+                      <!-- One box per answer part; app.js builds them -->
+                      <div class="answer-inputs" id="answer-inputs"></div>
+                      <p class="msg-error" id="answer-error"></p>
+                      <button class="btn" id="btn-submit">▶ SUBMIT</button>
+                    </div>
+
+                    <!-- Multiple choice: filled in by app.js -->
+                    <div class="options" id="q-type-mcq" hidden></div>
+                  </div>
                 </div>
               </section>
 
