@@ -951,7 +951,11 @@ ol {
 .cta {
   display: flex;
   flex-direction: column;
-  gap: clamp(6px, 0.9cqi, 10px);
+  /* Was clamp(6px, 0.9cqi, 10px) — the sign-in button, the play row and the
+     note underneath read as one clumped stack at that size. Enough room to
+     tell them apart as separate actions, still tighter than the gap before
+     the leaderboard panel (they're still one related group). */
+  gap: clamp(12px, 1.6cqi, 18px);
 }
 .cta .btn {
   padding-top: 12px;
@@ -1862,7 +1866,7 @@ ol {
 .top3 {
   /* Enough space above to read as a separate group from the CTA block —
      which also covers the tag that overhangs the panel's top edge. */
-  margin-top: clamp(16px, 2.6cqi, 34px);
+  margin-top: clamp(22px, 3.2cqi, 40px);
   display: flex;
   flex-direction: column;
   gap: clamp(8px, 1.4cqi, 14px);
@@ -2142,6 +2146,20 @@ ol {
    Tablet (768–1023px): cabinet ≈92% wide, slightly simpler deck.
    Mobile (≤767px): thin bezel hugging the phone, screen fills viewport.
    ========================================================================= */
+
+/* On anything roomier than a phone, just the title+date nudge up a little —
+   a transform rather than a layout change, so it doesn't move anything else
+   in the centred stack below it (the CTAs, the top-3 panel, etc. all stay
+   exactly where they were). */
+@media (min-width: 768px) {
+  #screen-onboarding .onboard__head,
+  #screen-played .onboard__head,
+  #screen-no-quiz .onboard__head {
+    /* A modest lift — enough to read as "higher", not so much that the gap
+       to whatever's below it balloons past every other gap on the screen */
+    transform: translateY(clamp(-24px, -3cqi, -10px));
+  }
+}
 
 /* --- Tablet --- */
 @media (max-width: 1023px) {
