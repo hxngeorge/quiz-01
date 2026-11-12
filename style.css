@@ -2276,6 +2276,32 @@ ol {
   #screen-question .qbar__dots {
     display: none;
   }
+
+  /* Phone only: the onboarding/home screen's content (title, CTAs, the
+     leaderboard panel) is far shorter than the phone's own tall viewport,
+     so centring it the way every other screen centres left a huge empty
+     gap above and below instead of real spacing between elements. Anchor
+     it near the top instead, clear of the corner icons, with deliberate
+     room between each piece. */
+  #screen-onboarding {
+    justify-content: flex-start;
+    padding-top: 64px;
+  }
+  /* Was clamped down to as little as 2px for a laptop's shorter glass —
+     here there's no such pressure, and the title and date read as stuck
+     together at that size. */
+  #screen-onboarding .onboard__head {
+    gap: 10px;
+  }
+  /* Was clamped down to 8px for the same laptop-fitting reason. */
+  #screen-onboarding .stack {
+    gap: 18px;
+  }
+  /* Brings the leaderboard panel further down from the CTA block above it,
+     reading clearly as the next, separate thing on the page. */
+  #screen-onboarding .top3 {
+    margin-top: 36px;
+  }
 }
 
 /* Narrow screens (by the CRT's own width): only two floating icons,
