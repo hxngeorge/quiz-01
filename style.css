@@ -2199,12 +2199,18 @@ ol {
   }
 
   /* Cabinet fills the viewport but keeps a real frame:
-     a chunky bottom section (with the deck) sells the TV illusion. */
+     a chunky bottom section (with the deck) sells the TV illusion.
+     svh (not dvh) on purpose: dvh tracks the browser chrome's current
+     state, which on a real phone can be out of step right after a page
+     load (Safari especially) — sizing against it can leave the cabinet
+     taller than what's actually visible, pushing everything centred
+     inside it higher than it looks like it should sit. svh is the
+     stable "chrome fully shown" height, so this never happens. */
   .tv {
     width: 100%;
     min-width: 0;
     height: 100vh;
-    height: 100dvh;
+    height: 100svh;
     padding: 14px 12px 0;
     border-radius: 0;
     box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.07);
@@ -2284,22 +2290,24 @@ ol {
      screen — but with real room between each piece, so the CTAs sit
      nearer the middle and the leaderboard sits further down, rather than
      anchored high with everything squeezed together.
-     These three gaps are sized off the viewport's own height (dvh), not a
+     These three gaps are sized off the viewport's own height (svh), not a
      flat pixel value, so a short phone (iPhone SE) and a tall one (Pro Max)
      both get spacing proportional to the room they actually have, instead
      of the same fixed gap looking cramped on one and oversized on the
-     other. vh is the fallback for older browsers without dvh support. */
+     other. svh rather than dvh for the same reason as .tv above — a
+     stable reference, not one that can be briefly out of step with what's
+     actually visible. vh is the fallback for older browsers. */
   #screen-onboarding .onboard__head {
     gap: clamp(8px, 1.2vh, 14px);
-    gap: clamp(8px, 1.2dvh, 14px);
+    gap: clamp(8px, 1.2svh, 14px);
   }
   #screen-onboarding .stack {
     gap: clamp(14px, 2.2vh, 24px);
-    gap: clamp(14px, 2.2dvh, 24px);
+    gap: clamp(14px, 2.2svh, 24px);
   }
   #screen-onboarding .top3 {
     margin-top: clamp(26px, 4.4vh, 44px);
-    margin-top: clamp(26px, 4.4dvh, 44px);
+    margin-top: clamp(26px, 4.4svh, 44px);
   }
 }
 
