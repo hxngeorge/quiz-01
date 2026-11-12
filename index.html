@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#0a0a0a">
-  <title>QUIZ://01</title>
+  <title>SideQues</title>
 
   <!-- Pixel fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -30,8 +30,6 @@
           <div class="crt__deco" aria-hidden="true">
             <span class="deco deco--block deco--green">?</span>
             <span class="deco deco--block deco--pink">!</span>
-            <span class="deco deco--text">&lt;&lt;</span>
-            <span class="deco deco--text">&gt;&gt;</span>
             <span class="deco deco--text text-green">+</span>
             <span class="deco deco--text text-pink">✦</span>
           </div>
@@ -45,8 +43,13 @@
             <!-- All game screens render inside this one panel -->
             <div class="panel" id="panel-game">
 
-              <!-- Sound on/off. The choice is remembered in this browser. -->
-              <button class="icon-btn sound-toggle" id="sound-toggle" aria-label="Toggle sound" aria-pressed="true">🔊</button>
+              <!-- How to play. Hidden once a quiz is in progress — same
+                   moment the exit button takes its place in the corner. -->
+              <button class="icon-btn info-btn" id="btn-info" aria-label="How to play">i</button>
+
+              <!-- Sound on/off. The choice is remembered in this browser.
+                   Muting draws a slash across the note — see .is-muted. -->
+              <button class="icon-btn sound-toggle" id="sound-toggle" aria-label="Toggle sound" aria-pressed="true">♪</button>
 
               <!-- Quit the quiz. Only shown while a quiz is actually in
                    progress (same moment the corner decorations dim). -->
@@ -57,7 +60,7 @@
               <section class="screen is-active" id="screen-boot">
                 <div class="stack">
                   <div class="onboard__head">
-                    <h1 class="title">QUIZ://01<span class="title__cursor"></span></h1>
+                    <h1 class="title">SideQues<span class="title__cursor"></span></h1>
                     <p class="boot__status" id="boot-status" role="status">LOADING<span class="boot__dots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span></p>
                   </div>
                 </div>
@@ -68,8 +71,7 @@
               <section class="screen" id="screen-no-quiz">
                 <div class="stack">
                   <div class="onboard__head">
-                    <p class="kicker">═ DAILY QUIZ ═</p>
-                    <h1 class="title">QUIZ://01<span class="title__cursor"></span></h1>
+                    <h1 class="title">SideQues<span class="title__cursor"></span></h1>
                     <p class="pill" id="no-quiz-date">—</p>
                   </div>
 
@@ -88,31 +90,43 @@
                 <div class="stack">
 
                   <div class="onboard__head">
-                    <p class="kicker">═ DAILY QUIZ ═</p>
-                    <h1 class="title">QUIZ://01<span class="title__cursor"></span></h1>
+                    <h1 class="title">SideQues<span class="title__cursor"></span></h1>
                     <p class="pill" id="today-date">MON 09 NOV 2026</p>
                   </div>
 
-                  <div class="field">
-                    <label class="label" for="name-input">[ ENTER YOUR NAME ]</label>
-                    <input class="input" id="name-input" type="text" placeholder="PLAYER_1" maxlength="20" autocomplete="off">
-                    <p class="msg-error" id="name-error"></p>
+                  <!-- Signed out, the primary action is signing in; playing
+                       anyway is the quieter one. Signing in flips that round
+                       and adds STATS — see showSignedInState() in app.js. -->
+                  <div class="cta">
+                    <button class="btn" id="btn-signin">▶ SIGN IN WITH GOOGLE</button>
+
+                    <p class="cta__who" id="cta-who" hidden>
+                      SIGNED IN AS <b id="signed-in-name">—</b> ·
+                      <button class="linkbtn" id="btn-signout">SIGN OUT</button>
+                    </p>
+
+                    <div class="btn-row">
+                      <button class="btn btn--pink" id="btn-start">▶ READY TO EMBARK</button>
+                      <button class="btn btn--pink" id="btn-stats" hidden>◆ STATS</button>
+                    </div>
+
+                    <p class="cta__note" id="guest-note">
+                      Sign in to save your score and streak.
+                    </p>
                   </div>
 
-                  <div class="btn-row">
-                    <button class="btn" id="btn-start">▶ READY TO EMBARK</button>
-                    <button class="btn btn--pink" id="btn-leaderboard">▷ LEADERBOARD</button>
-                  </div>
-
-                  <!-- Today's top 3. app.js fills this in from the leaderboard. -->
+                  <!-- Today's top 3, with the full leaderboard grouped onto it.
+                       app.js fills the list in from the leaderboard. -->
                   <div class="frame top3">
                     <span class="tag">TODAY'S TOP 3 <b>&gt;&gt;</b></span>
                     <ol class="top3__list" id="top3-list">
                       <li class="top3__empty">LOADING…</li>
                     </ol>
+                    <div class="top3__foot">
+                      <button class="btn btn--ghost" id="btn-leaderboard">▷ FULL LEADERBOARD</button>
+                      <p class="onboard__count">PLAYERS TODAY: <b id="player-count">–</b></p>
+                    </div>
                   </div>
-
-                  <p class="onboard__count">PLAYERS TODAY: <b id="player-count">–</b></p>
                 </div>
               </section>
 
@@ -122,8 +136,7 @@
               <section class="screen" id="screen-played">
                 <div class="stack">
                   <div class="onboard__head">
-                    <p class="kicker">═ DAILY QUIZ ═</p>
-                    <h1 class="title">QUIZ://01<span class="title__cursor"></span></h1>
+                    <h1 class="title">SideQues<span class="title__cursor"></span></h1>
                     <p class="pill" id="played-date">—</p>
                   </div>
 
@@ -147,7 +160,7 @@
                     <div class="qbar">
                       <span class="qbar__num" id="q-counter">Q.01 / 03</span>
                       <span class="qbar__dots" id="q-dots" aria-hidden="true">●○○</span>
-                      <span class="qbar__time">⏱ <b id="q-timer">00:00</b></span>
+                      <span class="qbar__time"><b id="q-timer">00:00</b></span>
                     </div>
                     <div class="divider"></div>
                   </div>
@@ -263,7 +276,69 @@
                     </dl>
                   </div>
 
+                  <!-- Guests only: this run wasn't saved, but it still can be.
+                       Hidden the moment it's claimed, or if already signed in. -->
+                  <div class="results-guest" id="results-guest-cta" hidden>
+                    <p class="cta__note">Playing as a guest — this run wasn't saved.</p>
+                    <button class="btn btn--ghost" id="btn-results-signin">▶ SIGN IN TO SAVE THIS SCORE</button>
+                  </div>
+                  <p class="results-guest__saved" id="results-guest-saved" hidden>✓ SAVED TO YOUR ACCOUNT</p>
+
                   <button class="btn" id="btn-results-leaderboard">▶ SEE LEADERBOARD</button>
+                </div>
+              </section>
+
+              <!-- ── SCREEN 5b: YOUR STATS ──
+                   Signed-in players only: their streak, totals and the last
+                   7 days. app.js fills every id in below via openStats(). -->
+              <section class="screen" id="screen-stats">
+                <div class="stack">
+                  <h2 class="banner">══ YOUR STATS ══</h2>
+
+                  <p class="stats-streakline" id="stats-streakline">—</p>
+
+                  <div id="stats-body">
+                    <!-- The week as a picture, with its own totals under it,
+                         so the chart and the numbers it describes read as one. -->
+                    <div class="frame chart">
+                      <span class="tag">LAST 7 DAYS <b>&gt;&gt;</b></span>
+                      <div class="chart__plot" id="stats-chart"></div>
+                      <p class="chart__foot">
+                        <b id="stats-week-points">0</b> PTS · <b id="stats-week-games">0</b>/7 DAYS
+                      </p>
+                    </div>
+
+                    <!-- Four compact tiles rather than four full-width rows:
+                         less text to wade through, and half the height. -->
+                    <div class="frame">
+                      <span class="tag">ALL TIME <b>&gt;&gt;</b></span>
+
+                      <dl class="stat-grid">
+                        <div class="stat">
+                          <dt>CURRENT STREAK</dt>
+                          <dd><b id="stats-streak">0</b> DAYS</dd>
+                        </div>
+                        <div class="stat">
+                          <dt>LONGEST STREAK</dt>
+                          <dd><b id="stats-longest">0</b> DAYS</dd>
+                        </div>
+                        <div class="stat">
+                          <dt>TOTAL POINTS</dt>
+                          <dd><b id="stats-total">0</b> PTS</dd>
+                        </div>
+                        <div class="stat">
+                          <dt>DAYS PLAYED</dt>
+                          <dd><b id="stats-days">0</b></dd>
+                        </div>
+                      </dl>
+                    </div>
+                  </div>
+
+                  <p class="stats-empty" id="stats-empty" hidden>
+                    PLAY YOUR FIRST QUIZ TO START YOUR STATS
+                  </p>
+
+                  <button class="btn btn--pink" data-home>◄ HOME</button>
                 </div>
               </section>
 
@@ -274,6 +349,7 @@
 
                   <div class="tabs" role="tablist">
                     <button class="tab is-selected" id="tab-today" role="tab" aria-selected="true">TODAY</button>
+                    <button class="tab" id="tab-weekly" role="tab" aria-selected="false">WEEKLY</button>
                     <button class="tab" id="tab-alltime" role="tab" aria-selected="false">ALL TIME</button>
                   </div>
 
@@ -308,13 +384,35 @@
               </div>
             </div>
           </div>
+
+          <!-- How to play. Opens on its own the first time this device ever
+               loads the game, and any time after from the info icon. -->
+          <div class="modal-overlay" id="info-modal">
+            <div class="frame modal-box modal-box--info">
+              <button class="icon-btn modal-close" id="btn-info-close" aria-label="Close">✕</button>
+              <span class="tag">HOW TO PLAY <b>&gt;&gt;</b></span>
+              <div class="info-scroll">
+                <h3 class="info-heading">THE RULES</h3>
+                <p>Three new questions, the same for everyone, every day. Answer all three to finish today's run — one attempt per day.</p>
+
+                <h3 class="info-heading">POINTS</h3>
+                <p>Each question shows its own points before you answer. Some questions have several parts worth points separately — get one part right and you still earn its share, even if you miss the rest.</p>
+
+                <h3 class="info-heading">LEADERBOARD</h3>
+                <p><b>TODAY</b> ranks everyone who's played today, ties broken by whoever finished fastest. <b>ALL TIME</b> adds up every day you've played.</p>
+
+                <h3 class="info-heading">SIGNING IN <span class="info-dot" title="Signing in is what ties a score to you, on any device you play from.">i</span></h3>
+                <p class="info-note">Sign in with Google to save your streaks across devices. Playing as a guest is totally fine too, but it just won't be saved.</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
       <!-- Deck under the screen (hidden on phones) -->
       <div class="tv__deck" aria-hidden="true">
         <div class="tv__stickers">
-          <div class="sticker-tape">QUIZ://01<small>daily ch. · 3 questions</small></div>
+          <div class="sticker-tape">SideQues<small>daily ch. · 3 questions</small></div>
           <div class="sticker-dot sticker-dot--pink">PLAY<br>DAILY</div>
           <div class="sticker-dot sticker-dot--green sticker-dot--star"></div>
         </div>
