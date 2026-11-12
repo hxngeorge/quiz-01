@@ -2283,21 +2283,23 @@ ol {
      the phone's own tall viewport. Left centred — same as every other
      screen — but with real room between each piece, so the CTAs sit
      nearer the middle and the leaderboard sits further down, rather than
-     anchored high with everything squeezed together. */
-  /* Was clamped down to as little as 2px for a laptop's shorter glass —
-     here there's no such pressure, and the title and date read as stuck
-     together at that size. */
+     anchored high with everything squeezed together.
+     These three gaps are sized off the viewport's own height (dvh), not a
+     flat pixel value, so a short phone (iPhone SE) and a tall one (Pro Max)
+     both get spacing proportional to the room they actually have, instead
+     of the same fixed gap looking cramped on one and oversized on the
+     other. vh is the fallback for older browsers without dvh support. */
   #screen-onboarding .onboard__head {
-    gap: 10px;
+    gap: clamp(8px, 1.2vh, 14px);
+    gap: clamp(8px, 1.2dvh, 14px);
   }
-  /* Was clamped down to 8px for the same laptop-fitting reason. */
   #screen-onboarding .stack {
-    gap: 18px;
+    gap: clamp(14px, 2.2vh, 24px);
+    gap: clamp(14px, 2.2dvh, 24px);
   }
-  /* Brings the leaderboard panel further down from the CTA block above it,
-     reading clearly as the next, separate thing on the page. */
   #screen-onboarding .top3 {
-    margin-top: 36px;
+    margin-top: clamp(26px, 4.4vh, 44px);
+    margin-top: clamp(26px, 4.4dvh, 44px);
   }
 }
 
