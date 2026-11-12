@@ -1,5 +1,5 @@
 /* =========================================================================
-   QUIZ://01 — PLAYER APP LOGIC
+   SideQues — PLAYER APP LOGIC
    -------------------------------------------------------------------------
    What's working so far (STEPS 2-6, plus picture and multi-part questions):
      • today's date on screen
@@ -27,9 +27,6 @@
    ========================================================================= */
 
 // Names shorter or longer than this are rejected.
-const NAME_MIN = 2;
-const NAME_MAX = 20;
-
 // The most answer parts one typed question can have (e.g. "name the two ...").
 const MAX_PARTS = 4;
 
@@ -37,6 +34,7 @@ const MAX_PARTS = 4;
 const KEY_SOUND  = "soundEnabled";
 const KEY_PLAYED = "quizPlayed_";   // + today's date, e.g. quizPlayed_2026-11-09
 const KEY_SCORE  = "quizScore_";    // + today's date
+const KEY_INFO_SEEN = "quizInfoSeen";   // has this device ever closed the "how to play" popup
 
 
 /* =========================================================================
@@ -56,6 +54,8 @@ const state = {
 
   myEntry: null,       // this player's line on today's leaderboard
   boardTab: "today",   // which leaderboard tab is open
+
+  authUser: null,      // { uid, name } once signed in with Google, else null
 
   // Where today's questions came from:
   //   "live"     a live row in the Google Sheet
@@ -121,12 +121,25 @@ const MOCK_TODAY = [
   { name: "GLITCH",      points: 10, time_seconds: 240, time_display: "4m 0s" }
 ];
 
+// Recent history is made up relative to today, so the weekly tab always has
+// something to show in demo mode, whatever day this is opened.
 const MOCK_ALLTIME = [
-  { name: "PIXEL_QUEEN", total_points: 310, days_played: 9 },
-  { name: "BYTE_ME",     total_points: 240, days_played: 8 },
-  { name: "ARCADE_ANNIE", total_points: 180, days_played: 5 },
-  { name: "NEON_NIK",    total_points: 95,  days_played: 4 },
-  { name: "GLITCH",      total_points: 40,  days_played: 2 }
+  { name: "PIXEL_QUEEN", total_points: 310, days_played: 9, current_streak: 4, longest_streak: 6,
+    history: [
+      { date: dateKeyOffset(-5), points: 20 }, { date: dateKeyOffset(-3), points: 35 },
+      { date: dateKeyOffset(-1), points: 40 }, { date: dateKeyOffset(0), points: 45 }
+    ] },
+  { name: "BYTE_ME",     total_points: 240, days_played: 8, current_streak: 1, longest_streak: 5,
+    history: [
+      { date: dateKeyOffset(-4), points: 25 }, { date: dateKeyOffset(-2), points: 30 },
+      { date: dateKeyOffset(0), points: 30 }
+    ] },
+  { name: "ARCADE_ANNIE", total_points: 180, days_played: 5, current_streak: 0, longest_streak: 3,
+    history: [ { date: dateKeyOffset(-6), points: 15 }, { date: dateKeyOffset(0), points: 45 } ] },
+  { name: "NEON_NIK",    total_points: 95,  days_played: 4, current_streak: 2, longest_streak: 2,
+    history: [ { date: dateKeyOffset(-1), points: 10 }, { date: dateKeyOffset(0), points: 25 } ] },
+  { name: "GLITCH",      total_points: 40,  days_played: 2, current_streak: 0, longest_streak: 1,
+    history: [ { date: dateKeyOffset(-10), points: 10 }, { date: dateKeyOffset(-9), points: 30 } ] }
 ];
 
 
@@ -318,7 +331,7 @@ function normalizeImageUrl(raw, n) {
   if (drive) return "https://lh3.googleusercontent.com/d/" + drive[1];
 
   if (/^[a-z][a-z0-9+.-]*:/i.test(link) && !/^https?:/i.test(link)) {
-    console.warn("QUIZ://01 — Q" + n + ': ignoring the image "' + link +
+    console.warn("SideQues — Q" + n + ': ignoring the image "' + link +
                  '" — it must start with https:// or be a file path like images/q1.png');
     return "";
   }
@@ -455,7 +468,7 @@ async function loadTodaysQuestions() {
   try {
     rows = await withTimeout(fetchSheetRows(), 6, "fetching the questions");
   } catch (err) {
-    console.warn("QUIZ://01 — couldn't read the Google Sheet, using the sample questions.", err);
+    console.warn("SideQues — couldn't read the Google Sheet, using the sample questions.", err);
     state.questions = FALLBACK_QUESTIONS;
     state.quizMode = "fallback";
     return;
@@ -480,7 +493,7 @@ async function loadTodaysQuestions() {
     state.questions = buildQuestionsFromRow(row);
     state.quizMode = mode;
   } catch (err) {
-    console.error("QUIZ://01 — today's row in the Google Sheet is filled in wrong: " + err.message);
+    console.error("SideQues — today's row in the Google Sheet is filled in wrong: " + err.message);
     state.questions = [];
     state.quizMode = "none";
   }
@@ -498,6 +511,15 @@ async function loadTodaysQuestions() {
  */
 function todayKey() {
   const d = new Date();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day   = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${month}-${day}`;
+}
+
+/** A date N days from today, in the same "YYYY-MM-DD" shape as todayKey(). */
+function dateKeyOffset(deltaDays) {
+  const d = new Date();
+  d.setDate(d.getDate() + deltaDays);
   const month = String(d.getMonth() + 1).padStart(2, "0");
   const day   = String(d.getDate()).padStart(2, "0");
   return `${d.getFullYear()}-${month}-${day}`;
@@ -707,11 +729,12 @@ function toggleSound() {
   playClickSound();                       // silent when turning off
 }
 
-/** Keeps the 🔊/🔇 button in step with the setting. */
+/** Keeps the sound button in step with the setting. The muted look is a
+ *  CSS slash through the note, so the glyph itself never changes. */
 function updateSoundButton() {
   const btn = document.getElementById("sound-toggle");
   if (!btn) return;
-  btn.textContent = state.soundOn ? "🔊" : "🔇";
+  btn.classList.toggle("is-muted", !state.soundOn);
   btn.setAttribute("aria-pressed", String(state.soundOn));
   btn.setAttribute("aria-label", state.soundOn ? "Turn sound off" : "Turn sound on");
 }
@@ -775,7 +798,7 @@ function startImagePreload() {
 
   // Never hold a player up for more than 8 seconds
   const pending = withTimeout(Promise.all(downloads), 8, "loading the pictures")
-    .catch(function (err) { console.warn("QUIZ://01 — " + err.message + ", starting anyway."); })
+    .catch(function (err) { console.warn("SideQues — " + err.message + ", starting anyway."); })
     .then(function () { state.imagesPending = null; });
   state.imagesPending = pending;
 }
@@ -807,15 +830,22 @@ async function waitForImages() {
    placeholder values — or the connection fails — the game carries on with
    the sample players, so a broken database never stops anyone playing.
 
-   What gets stored:
-     /daily/{YYYY-MM-DD}/scores/{name}  one document per player per day
-     /alltime/{name}                    running totals across all days
+   A score only ever saves for a signed-in player. A guest's run lives only
+   in memory for that one session — nothing is written anywhere for them.
+
+   What gets stored, keyed by the player's Google account id (uid), never
+   by typed text — that's what lets the same person be recognised across
+   devices, and keeps two different people from colliding under one name:
+     /daily/{YYYY-MM-DD}/scores/{uid}   one document per player per day
+     /alltime/{uid}                     running totals, streak and history
    ========================================================================= */
 
 const firebase = {
-  db: null,       // the database, once connected
-  fns: null,      // the Firestore functions we use
-  ready: false    // true only when it's actually usable
+  db: null,        // the database, once connected
+  fns: null,       // the Firestore functions we use
+  auth: null,      // the Auth instance, once connected
+  authFns: null,   // the Auth functions we use
+  ready: false     // true only when Firestore is actually usable
 };
 
 const SDK = "https://www.gstatic.com/firebasejs/10.12.0/";
@@ -881,30 +911,83 @@ function isFirebaseConfigured() {
  */
 async function connectFirebase() {
   if (!isFirebaseConfigured()) {
-    console.info("QUIZ://01 — no Firebase settings yet, using sample players.");
+    console.info("SideQues — no Firebase settings yet, using sample players.");
     return;
   }
 
   try {
-    const [app, store] = await Promise.all([
+    const [app, store, authLib] = await Promise.all([
       import(SDK + "firebase-app.js"),
-      import(SDK + "firebase-firestore.js")
+      import(SDK + "firebase-firestore.js"),
+      import(SDK + "firebase-auth.js")
     ]);
 
-    firebase.db = store.getFirestore(app.initializeApp(FIREBASE_CONFIG));
+    const appInstance = app.initializeApp(FIREBASE_CONFIG);
+    firebase.db = store.getFirestore(appInstance);
     firebase.fns = store;
+    firebase.auth = authLib.getAuth(appInstance);
+    firebase.authFns = authLib;
     firebase.ready = true;
+
+    // Firebase remembers a signed-in player between visits, but checking
+    // that is itself async — wait for the first answer so nothing that
+    // runs right after connectFirebase() has to guess. It keeps state
+    // up to date on every later sign-in/out too, not just this once.
+    await withTimeout(new Promise(function (resolve) {
+      authLib.onAuthStateChanged(firebase.auth, function (user) {
+        state.authUser = user ? { uid: user.uid, name: user.displayName || "Player" } : null;
+        showSignedInState();     // the popup finishes long after init() did
+        resolve();
+      });
+    }), 5, "checking sign-in state").catch(function () { /* carry on signed out */ });
   } catch (err) {
-    console.warn("QUIZ://01 — couldn't reach Firebase, using sample players.", err);
+    console.warn("SideQues — couldn't reach Firebase, using sample players.", err);
+  }
+}
+
+/** Google sign-in. A no-op if Firebase never connected. */
+async function signInWithGoogle() {
+  if (!firebase.ready) return;
+  const { GoogleAuthProvider, signInWithPopup } = firebase.authFns;
+  try {
+    const result = await signInWithPopup(firebase.auth, new GoogleAuthProvider());
+    await claimGuestScoreIfAny(result.user);
+  } catch (err) {
+    // Closing the popup isn't an error worth warning about
+    if (err.code !== "auth/popup-closed-by-user" && err.code !== "auth/cancelled-popup-request") {
+      console.warn("SideQues — sign-in didn't complete.", err);
+    }
   }
 }
 
 /**
- * Turns a player's name into something usable as a document name.
- * Firestore ids can't contain "/" and can't be empty.
+ * A guest who just finished today's quiz, then signs in right there on the
+ * results screen, gets that run saved retroactively — the one case where a
+ * guest's score ends up tracked, since they're asking for it before leaving.
  */
-function docKey(name) {
-  return name.trim().replace(/[/\\.#$\[\]]/g, "-").slice(0, 60) || "player";
+async function claimGuestScoreIfAny(user) {
+  const onResults = document.getElementById("screen-results").classList.contains("is-active");
+  if (!onResults || !state.myEntry || state.myEntry.uid) return;
+
+  state.myEntry.uid = user.uid;
+  state.myEntry.name = user.displayName || "Player";
+  state.playerName = state.myEntry.name;
+
+  try {
+    await withRetry(function () { return saveScoreToFirebase(state.myEntry); },
+      { timeoutSeconds: 6, label: "saving the score" });
+    const rows = await loadTodayRows();
+    document.getElementById("result-rank").textContent = rankIn(rows, state.myEntry);
+    document.getElementById("results-guest-cta").hidden = true;
+    document.getElementById("results-guest-saved").hidden = false;
+  } catch (err) {
+    console.warn("SideQues — couldn't save your score after signing in.", err);
+  }
+}
+
+async function signOutOfGoogle() {
+  if (!firebase.ready || !firebase.auth) return;
+  await firebase.authFns.signOut(firebase.auth);
 }
 
 /** The player's IP, if the owner asked for it. Null otherwise. */
@@ -920,12 +1003,13 @@ async function lookUpIp() {
 }
 
 /**
- * Saves a finished run: one document for today, plus the player's
- * running all-time totals.
+ * Saves a finished run under the signed-in player's account: today's
+ * score, plus their running all-time totals, streak and recent history.
+ * Never called for a guest — there's no account to save it under.
  */
 async function saveScoreToFirebase(entry) {
-  const { doc, setDoc, getDoc, serverTimestamp } = firebase.fns;
-  const key = docKey(entry.name);
+  const { doc, setDoc, serverTimestamp } = firebase.fns;
+  const uid = state.authUser.uid;
 
   const record = {
     name: entry.name,
@@ -938,29 +1022,44 @@ async function saveScoreToFirebase(entry) {
   const ip = await lookUpIp();
   if (ip) record.ip = ip;
 
-  // Today's score
-  await setDoc(doc(firebase.db, "daily", todayKey(), "scores", key), record);
+  await setDoc(doc(firebase.db, "daily", todayKey(), "scores", uid), record);
+  await updateAllTimeTotals(uid, entry);
+}
 
-  // All-time totals: add to what's already there, or start fresh
-  const allTimeRef = doc(firebase.db, "alltime", key);
-  const existing = await getDoc(allTimeRef);
+/** Keeps one player's running total, streak and recent history current. */
+async function updateAllTimeTotals(uid, entry) {
+  const { doc, getDoc, setDoc, serverTimestamp } = firebase.fns;
+  const ref = doc(firebase.db, "alltime", uid);
+  const existing = await getDoc(ref);
+  const previous = existing.exists() ? existing.data() : null;
+  const today = todayKey();
+  const streak = nextStreak(previous);
 
-  if (existing.exists()) {
-    const previous = existing.data();
-    await setDoc(allTimeRef, {
-      name: entry.name,
-      total_points: (previous.total_points || 0) + entry.points,
-      days_played: (previous.days_played || 0) + 1,
-      last_played: serverTimestamp()
-    });
-  } else {
-    await setDoc(allTimeRef, {
-      name: entry.name,
-      total_points: entry.points,
-      days_played: 1,
-      last_played: serverTimestamp()
-    });
-  }
+  await setDoc(ref, {
+    name: entry.name,
+    total_points: (previous ? previous.total_points : 0) + entry.points,
+    days_played: (previous ? previous.days_played : 0) + 1,
+    current_streak: streak,
+    longest_streak: Math.max(streak, previous ? (previous.longest_streak || 0) : 0),
+    last_played_date: today,
+    last_played: serverTimestamp(),
+    history: appendHistory(previous ? previous.history : null, today, entry.points)
+  });
+}
+
+/** A streak only continues if the player's last run was exactly yesterday. */
+function nextStreak(previous) {
+  if (!previous || !previous.last_played_date) return 1;
+  if (previous.last_played_date === dateKeyOffset(-1)) return (previous.current_streak || 0) + 1;
+  return 1;   // a day was missed — starting over
+}
+
+/** Keeps the last 60 days of {date, points} — enough for weekly totals and a chart. */
+function appendHistory(history, date, points) {
+  const list = (history || []).filter(function (h) { return h.date !== date; });
+  list.push({ date: date, points: points });
+  list.sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+  return list.slice(-60);
 }
 
 /** Everyone who has played today, straight from the database. */
@@ -968,7 +1067,7 @@ async function readTodayScores() {
   const { collection, getDocs } = firebase.fns;
   const snapshot = await getDocs(collection(firebase.db, "daily", todayKey(), "scores"));
   return snapshot.docs.map(function (d) {
-    return d.data();
+    return Object.assign({ id: d.id }, d.data());
   });
 }
 
@@ -977,8 +1076,25 @@ async function readAllTime() {
   const { collection, getDocs } = firebase.fns;
   const snapshot = await getDocs(collection(firebase.db, "alltime"));
   return snapshot.docs.map(function (d) {
-    return d.data();
+    return Object.assign({ id: d.id }, d.data());
   });
+}
+
+/** The signed-in player's own all-time doc — null until they've played once. */
+async function readMyAllTime() {
+  const { doc, getDoc } = firebase.fns;
+  const snapshot = await getDoc(doc(firebase.db, "alltime", state.authUser.uid));
+  return snapshot.exists() ? snapshot.data() : null;
+}
+
+/** Points and games played across the last 7 days, today included. */
+function weeklyFromHistory(history) {
+  const cutoff = dateKeyOffset(-6);
+  const recent = (history || []).filter(function (h) { return h.date >= cutoff; });
+  return {
+    points: recent.reduce(function (sum, h) { return sum + h.points; }, 0),
+    games: recent.length
+  };
 }
 
 
@@ -1380,6 +1496,7 @@ async function showResults() {
   // The player's own line on today's leaderboard
   state.myEntry = {
     name: state.playerName,
+    uid: state.authUser ? state.authUser.uid : null,
     points: state.points,
     time_seconds: state.elapsed,
     time_display: timeDisplay
@@ -1397,6 +1514,12 @@ async function showResults() {
   document.getElementById("result-time").textContent = timeDisplay.toUpperCase();
   document.getElementById("result-rank").textContent = "…";   // until it's known
 
+  // Only an unsigned-in guest, on a real run, with a database to save
+  // to, gets offered the chance to claim their score.
+  document.getElementById("results-guest-cta").hidden =
+    isPreview || Boolean(state.authUser) || !firebase.ready;
+  document.getElementById("results-guest-saved").hidden = true;
+
   showScreen("screen-results");
   playFanfareSound();
 
@@ -1407,19 +1530,18 @@ async function showResults() {
 
   // Saving and ranking happen after the screen is up, so a slow
   // connection never leaves the player staring at a blank screen.
-  let saved = false;
-  if (firebase.ready) {
+  if (firebase.ready && state.authUser) {
     try {
       await withRetry(function () { return saveScoreToFirebase(state.myEntry); },
         { timeoutSeconds: 6, label: "saving the score" });
-      saved = true;
     } catch (err) {
-      console.warn("QUIZ://01 — score couldn't be saved.", err);
+      console.warn("SideQues — score couldn't be saved.", err);
     }
+  } else if (!firebase.ready) {
+    saveTodayEntry(state.myEntry);     // sample list, when there's no database at all
   }
-  if (!saved) {
-    saveTodayEntry(state.myEntry);     // sample list, when there's no database
-  }
+  // A signed-out guest, with a real database available, saves nothing —
+  // their run only ever lived on this screen.
 
   const rows = await loadTodayRows();
   document.getElementById("result-rank").textContent = rankIn(rows, state.myEntry);
@@ -1441,7 +1563,7 @@ async function loadTodayRows() {
       const rows = await withRetry(readTodayScores, { timeoutSeconds: 6, label: "reading today's scores" });
       return sortToday(rows);
     } catch (err) {
-      console.warn("QUIZ://01 — couldn't read today's scores.", err);
+      console.warn("SideQues — couldn't read today's scores.", err);
     }
   }
   return sortToday(MOCK_TODAY.slice());
@@ -1456,12 +1578,32 @@ async function loadAllTimeRows() {
         return (b.total_points || 0) - (a.total_points || 0);
       });
     } catch (err) {
-      console.warn("QUIZ://01 — couldn't read the all-time table.", err);
+      console.warn("SideQues — couldn't read the all-time table.", err);
     }
   }
   return MOCK_ALLTIME.slice().sort(function (a, b) {
     return b.total_points - a.total_points;
   });
+}
+
+/** Everyone who's played in the last 7 days, weekly points first. Computed
+ *  from the same all-time table client-side — no extra reads or billing. */
+async function loadWeeklyRows() {
+  let rows = MOCK_ALLTIME.slice();
+  if (firebase.ready) {
+    try {
+      rows = await withRetry(readAllTime, { timeoutSeconds: 6, label: "reading the weekly table" });
+    } catch (err) {
+      console.warn("SideQues — couldn't read the weekly table.", err);
+    }
+  }
+  return rows
+    .map(function (row) {
+      const week = weeklyFromHistory(row.history);
+      return Object.assign({}, row, { weekly_points: week.points, weekly_games: week.games });
+    })
+    .filter(function (row) { return row.weekly_games > 0; })
+    .sort(function (a, b) { return b.weekly_points - a.weekly_points; });
 }
 
 /** Most points wins; if two are level, the quicker time wins. */
@@ -1487,44 +1629,56 @@ function saveTodayEntry(entry) {
 /** What position a run came in today — 1 is first. */
 function rankIn(rows, entry) {
   const position = rows.findIndex(function (row) {
-    return row.name.toLowerCase() === entry.name.toLowerCase();
+    return entry.uid ? row.id === entry.uid : row.name.toLowerCase() === entry.name.toLowerCase();
   });
   return position === -1 ? "—" : position + 1;
 }
 
-/** 1, 2, 3 get medals; everyone else gets their number. */
+/** Everyone gets their number — the top three are picked out in colour
+ *  by CSS instead, via the data-rank attribute set where rows are drawn. */
 function rankBadge(position) {
-  if (position === 1) return "🥇";
-  if (position === 2) return "🥈";
-  if (position === 3) return "🥉";
   return String(position);
 }
 
 /** True if a leaderboard row belongs to the player who just finished. */
 function isMyRow(row) {
-  return Boolean(state.myEntry) &&
-         row.name.toLowerCase() === state.myEntry.name.toLowerCase();
+  if (!state.myEntry) return false;
+  if (state.myEntry.uid) return row.id === state.myEntry.uid;
+  return row.name.toLowerCase() === state.myEntry.name.toLowerCase();
 }
 
-/** Draws whichever leaderboard tab is open. */
+/** What each leaderboard tab puts in its two value columns. */
+const BOARD_COLUMNS = {
+  today:   { head: "<tr><th>#</th><th>NAME</th><th>PTS</th><th>TIME</th></tr>",
+             main: function (r) { return r.points; }, extra: function (r) { return r.time_display; },
+             empty: "NOBODY HAS PLAYED YET TODAY" },
+  weekly:  { head: "<tr><th>#</th><th>NAME</th><th>PTS</th><th>DAYS</th></tr>",
+             main: function (r) { return r.weekly_points; }, extra: function (r) { return r.weekly_games; },
+             empty: "NOBODY HAS PLAYED THIS WEEK" },
+  alltime: { head: "<tr><th>#</th><th>NAME</th><th>TOTAL</th><th>DAYS</th></tr>",
+             main: function (r) { return r.total_points; }, extra: function (r) { return r.days_played; },
+             empty: "NO SCORES RECORDED YET" }
+};
+
 async function renderLeaderboard() {
   const head  = document.getElementById("board-head");
   const body  = document.getElementById("board-body");
   const empty = document.getElementById("board-empty");
-  const isToday = state.boardTab === "today";
+  const tab   = state.boardTab;
+  const cols  = BOARD_COLUMNS[tab];
 
   // Reading may take a moment over the network
   empty.hidden = false;
   empty.textContent = "LOADING…";
 
-  const rows = isToday ? await loadTodayRows() : await loadAllTimeRows();
+  const rows = tab === "today"   ? await loadTodayRows()
+             : tab === "weekly"  ? await loadWeeklyRows()
+             :                     await loadAllTimeRows();
 
   // The player may have switched tabs while this was loading
-  if ((state.boardTab === "today") !== isToday) return;
+  if (state.boardTab !== tab) return;
 
-  head.innerHTML = isToday
-    ? "<tr><th>#</th><th>NAME</th><th>PTS</th><th>TIME</th></tr>"
-    : "<tr><th>#</th><th>NAME</th><th>TOTAL</th><th>DAYS</th></tr>";
+  head.innerHTML = cols.head;
 
   body.innerHTML = "";
   rows.forEach(function (row, index) {
@@ -1533,39 +1687,37 @@ async function renderLeaderboard() {
 
     const rank = document.createElement("td");
     rank.className = "rank";
+    rank.dataset.rank = index + 1;     // 1-3 get picked out in colour
     rank.textContent = rankBadge(index + 1);
 
     const name = document.createElement("td");
     name.textContent = row.name;
 
     const main = document.createElement("td");
-    main.textContent = isToday ? row.points : row.total_points;
+    main.textContent = cols.main(row);
 
     const extra = document.createElement("td");
-    extra.textContent = isToday ? row.time_display : row.days_played;
+    extra.textContent = cols.extra(row);
 
     tr.append(rank, name, main, extra);
     body.appendChild(tr);
   });
 
   const nothingToShow = rows.length === 0;
-  empty.textContent = isToday
-    ? "NOBODY HAS PLAYED YET TODAY"
-    : "NO SCORES RECORDED YET";
+  empty.textContent = cols.empty;
   empty.hidden = !nothingToShow;
   document.getElementById("board-table").hidden = nothingToShow;
 }
 
-/** Switches between the TODAY and ALL TIME tabs. */
+/** Switches between the TODAY, WEEKLY and ALL TIME tabs. */
 function selectTab(which) {
   state.boardTab = which;
 
-  const todayBtn = document.getElementById("tab-today");
-  const allBtn   = document.getElementById("tab-alltime");
-  todayBtn.classList.toggle("is-selected", which === "today");
-  allBtn.classList.toggle("is-selected", which === "alltime");
-  todayBtn.setAttribute("aria-selected", String(which === "today"));
-  allBtn.setAttribute("aria-selected", String(which === "alltime"));
+  ["today", "weekly", "alltime"].forEach(function (name) {
+    const btn = document.getElementById("tab-" + name);
+    btn.classList.toggle("is-selected", name === which);
+    btn.setAttribute("aria-selected", String(name === which));
+  });
 
   renderLeaderboard();
 }
@@ -1601,7 +1753,7 @@ function renderTopThree(allRows) {
     const li = document.createElement("li");
     li.className = "top3__row";
     li.innerHTML =
-      `<span>${rankBadge(index + 1)}</span>` +
+      `<span class="top3__rank" data-rank="${index + 1}">${rankBadge(index + 1)}</span>` +
       `<span class="top3__name"></span>` +
       `<span class="top3__pts">${row.points} PTS</span>`;
     li.querySelector(".top3__name").textContent = row.name;
@@ -1676,35 +1828,13 @@ function shakeScreen(id) {
  * Checks the typed name.
  * Returns the cleaned-up name, or null if it isn't usable (and shows why).
  */
-function validateName(raw) {
-  const name = raw.trim().replace(/\s+/g, " ");   // tidy up spacing
-  const errorEl = document.getElementById("name-error");
-
-  let problem = "";
-  if (name.length === 0) {
-    problem = "PLEASE ENTER A NAME";
-  } else if (name.length < NAME_MIN) {
-    problem = `AT LEAST ${NAME_MIN} CHARACTERS`;
-  } else if (name.length > NAME_MAX) {
-    problem = `AT MOST ${NAME_MAX} CHARACTERS`;
-  }
-
-  if (errorEl) errorEl.textContent = problem;
-  return problem ? null : name;
-}
-
 /** Runs when "READY TO EMBARK" is pressed. */
 function handleStart() {
   playClickSound();
 
-  const input = document.getElementById("name-input");
-  const name  = validateName(input ? input.value : "");
-  if (!name) {
-    if (input) input.focus();
-    return;
-  }
-
-  state.playerName = name;
+  // A signed-in player plays as their Google name; a guest needs no name,
+  // since nothing about their run is saved or ranked.
+  state.playerName = state.authUser ? state.authUser.name : "GUEST";
   startQuiz();
 }
 
@@ -1770,14 +1900,169 @@ function showOpeningScreen() {
 
   const id = openingScreenId();
   prepareOpeningScreen(id);
+  showSignedInState();
   document.querySelectorAll(".screen").forEach(function (section) {
     section.classList.toggle("is-active", section.id === id);
   });
+}
 
-  if (id === "screen-onboarding") {
-    const input = document.getElementById("name-input");
-    if (input) input.focus();
+/**
+ * Dresses the opening screen for whoever is (or isn't) signed in.
+ * Signed out: signing in is the primary action, playing anyway the quieter
+ * one, with a note saying what a guest gives up. Signed in: playing becomes
+ * primary, STATS joins it, and the note goes.
+ */
+function showSignedInState() {
+  const signedIn = Boolean(state.authUser);
+
+  const signInBtn = document.getElementById("btn-signin");
+  const who       = document.getElementById("cta-who");
+  const startBtn  = document.getElementById("btn-start");
+  const statsBtn  = document.getElementById("btn-stats");
+  const note      = document.getElementById("guest-note");
+  if (!signInBtn) return;     // not on the player page
+
+  signInBtn.hidden = signedIn;
+  who.hidden       = !signedIn;
+  statsBtn.hidden  = !signedIn;
+  note.hidden      = signedIn;
+
+  // Playing is only the primary action once there's an account behind it
+  startBtn.classList.toggle("btn--pink", !signedIn);
+
+  if (signedIn) {
+    document.getElementById("signed-in-name").textContent = state.authUser.name;
   }
+}
+
+/** A one-line nudge under the title, keyed to how long the streak is. */
+function streakMessage(streak) {
+  if (streak === 0) return "PLAY TODAY TO START A STREAK";
+  if (streak === 1) return "DAY ONE — KEEP IT GOING";
+  if (streak < 5) return `★ ${streak} DAY STREAK`;
+  if (streak < 10) return `★ ON FIRE — ${streak} DAYS STRONG`;
+  return `★ LEGENDARY — ${streak} DAY STREAK`;
+}
+
+/** Shows a signed-in player's streak, totals and last 7 days. */
+async function openStats() {
+  playClickSound();
+  showScreen("screen-stats");
+
+  const body  = document.getElementById("stats-body");
+  const empty = document.getElementById("stats-empty");
+  empty.hidden = true;
+
+  if (!firebase.ready || !state.authUser) {
+    body.hidden = true;
+    empty.hidden = false;
+    empty.textContent = "SIGN IN TO SEE YOUR STATS";
+    return;
+  }
+
+  let data = null;
+  try {
+    data = await withRetry(readMyAllTime, { timeoutSeconds: 6, label: "reading your stats" });
+  } catch (err) {
+    console.warn("SideQues — couldn't read your stats.", err);
+  }
+
+  if (!data) {
+    body.hidden = true;
+    empty.hidden = false;
+    empty.textContent = "PLAY YOUR FIRST QUIZ TO START YOUR STATS";
+    document.getElementById("stats-streakline").textContent = "";
+    return;
+  }
+
+  body.hidden = false;
+
+  const week = weeklyFromHistory(data.history);
+  document.getElementById("stats-streakline").textContent = streakMessage(data.current_streak || 0);
+  document.getElementById("stats-streak").textContent = data.current_streak || 0;
+  document.getElementById("stats-longest").textContent = data.longest_streak || 0;
+  document.getElementById("stats-week-points").textContent = week.points;
+  document.getElementById("stats-week-games").textContent = week.games;
+  document.getElementById("stats-total").textContent = data.total_points || 0;
+  document.getElementById("stats-days").textContent = data.days_played || 0;
+  renderStatsChart(data.history);
+}
+
+/** "2026-11-12" → "T" (the weekday's initial, for the chart's axis). */
+function dayInitial(dateKey) {
+  const parts = dateKey.split("-").map(Number);
+  const day = new Date(parts[0], parts[1] - 1, parts[2]).getDay();
+  return ["S", "M", "T", "W", "T", "F", "S"][day];
+}
+
+/**
+ * The last 7 days as a small bar chart. Bars are scaled against the best
+ * day in the week, so the shape is readable whatever the points were; a day
+ * that wasn't played gets an empty track rather than a zero-height bar.
+ */
+function renderStatsChart(history) {
+  const plot = document.getElementById("stats-chart");
+  if (!plot) return;
+
+  const byDate = {};
+  (history || []).forEach(function (h) { byDate[h.date] = h.points; });
+
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const key = dateKeyOffset(-i);
+    days.push({ key: key, points: byDate[key], isToday: i === 0 });
+  }
+
+  const best = days.reduce(function (top, d) {
+    return Math.max(top, d.points || 0);
+  }, 0) || 1;
+
+  plot.innerHTML = "";
+  days.forEach(function (day) {
+    const played = day.points !== undefined;
+
+    const col = document.createElement("div");
+    col.className = "chart__col"
+      + (played ? "" : " chart__col--missed")
+      + (day.isToday ? " chart__col--today" : "");
+
+    const track = document.createElement("div");
+    track.className = "chart__track";
+
+    const value = document.createElement("span");
+    value.className = "chart__value";
+    value.textContent = played ? day.points : "·";
+
+    if (played) {
+      const bar = document.createElement("div");
+      bar.className = "chart__bar";
+      // Tops out at 82% so the number above the tallest bar still has room,
+      // with a floor of 8% so a low-scoring day is still visibly a bar.
+      bar.style.height = Math.max(8, Math.round((day.points / best) * 82)) + "%";
+      bar.appendChild(value);          // the number rides on top of its bar
+      track.appendChild(bar);
+    } else {
+      track.appendChild(value);
+    }
+
+    const label = document.createElement("span");
+    label.className = "chart__day";
+    label.textContent = dayInitial(day.key);
+
+    col.append(track, label);
+    plot.appendChild(col);
+  });
+}
+
+function openInfoModal() {
+  document.getElementById("info-modal").classList.add("is-active");
+}
+
+/** Closing it — by the ✕ or after reading it the first time — is what
+ *  marks it as seen, so it won't open on its own again on this device. */
+function closeInfoModal() {
+  document.getElementById("info-modal").classList.remove("is-active");
+  storageSet(KEY_INFO_SEEN, "true");
 }
 
 /** The HOME buttons: back to the opening screen, with the usual flash. */
@@ -1817,6 +2102,21 @@ async function init() {
   document.getElementById("sound-toggle").addEventListener("click", toggleSound);
   document.getElementById("btn-start").addEventListener("click", handleStart);
 
+  // --- Signing in and out ---
+  document.getElementById("btn-signin").addEventListener("click", function () {
+    playClickSound();
+    signInWithGoogle();
+  });
+  document.getElementById("btn-signout").addEventListener("click", function () {
+    playClickSound();
+    signOutOfGoogle();
+  });
+  document.getElementById("btn-stats").addEventListener("click", openStats);
+  document.getElementById("btn-results-signin").addEventListener("click", function () {
+    playClickSound();
+    signInWithGoogle();
+  });
+
   document.getElementById("btn-leaderboard").addEventListener("click", openLeaderboard);
   document.getElementById("btn-played-leaderboard").addEventListener("click", openLeaderboard);
   document.getElementById("btn-results-leaderboard").addEventListener("click", openLeaderboard);
@@ -1825,6 +2125,10 @@ async function init() {
   document.getElementById("tab-today").addEventListener("click", function () {
     playClickSound();
     selectTab("today");
+  });
+  document.getElementById("tab-weekly").addEventListener("click", function () {
+    playClickSound();
+    selectTab("weekly");
   });
   document.getElementById("tab-alltime").addEventListener("click", function () {
     playClickSound();
@@ -1858,17 +2162,15 @@ async function init() {
     goHome();          // nothing has been saved yet, so quitting just discards the run
   });
 
-  // Enter in the name box is the same as pressing the green button
-  const input = document.getElementById("name-input");
-  if (input) {
-    input.addEventListener("keydown", function (event) {
-      if (event.key === "Enter") handleStart();
-    });
-    // Clear the error message as soon as they start fixing it
-    input.addEventListener("input", function () {
-      document.getElementById("name-error").textContent = "";
-    });
-  }
+  // --- How to play ---
+  document.getElementById("btn-info").addEventListener("click", function () {
+    playClickSound();
+    openInfoModal();
+  });
+  document.getElementById("btn-info-close").addEventListener("click", function () {
+    playClickSound();
+    closeInfoModal();
+  });
 
   // The "LOADING…" screen is showing. Fetch today's questions and connect
   // to Firebase at the same time, then pick the real opening screen.
@@ -1877,12 +2179,18 @@ async function init() {
   await Promise.all([
     loadTodaysQuestions(),
     withTimeout(connectFirebase(), 8, "connecting to Firebase").catch(function (err) {
-      console.warn("QUIZ://01 — " + err.message + ", carrying on without it.");
+      console.warn("SideQues — " + err.message + ", carrying on without it.");
     })
   ]);
 
   startImagePreload();     // pictures download while the player types their name
   showOpeningScreen();
+
+  // First time this device has ever loaded the game: show how-to-play
+  // before anything else, same as a first-run tutorial.
+  if (storageGet(KEY_INFO_SEEN) !== "true") {
+    openInfoModal();
+  }
 }
 
 /**
