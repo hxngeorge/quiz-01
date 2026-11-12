@@ -2153,7 +2153,6 @@ ol {
    exactly where they were). */
 @media (min-width: 768px) {
   #screen-onboarding .onboard__head,
-  #screen-played .onboard__head,
   #screen-no-quiz .onboard__head {
     /* A modest lift — enough to read as "higher", not so much that the gap
        to whatever's below it balloons past every other gap on the screen */
