@@ -1930,6 +1930,10 @@ function showSignedInState() {
   // Playing is only the primary action once there's an account behind it
   startBtn.classList.toggle("btn--pink", !signedIn);
 
+  // Same STATS button on the "already played" screen, since a signed-in
+  // player can still want to check it after they've finished for the day
+  document.getElementById("btn-played-stats").hidden = !signedIn;
+
   if (signedIn) {
     document.getElementById("signed-in-name").textContent = state.authUser.name;
   }
@@ -2073,6 +2077,7 @@ function goHome() {
 
   const id = openingScreenId();
   prepareOpeningScreen(id);
+  showSignedInState();   // keeps the played screen's STATS button in step too
   showScreen(id);
 }
 
@@ -2112,6 +2117,7 @@ async function init() {
     signOutOfGoogle();
   });
   document.getElementById("btn-stats").addEventListener("click", openStats);
+  document.getElementById("btn-played-stats").addEventListener("click", openStats);
   document.getElementById("btn-results-signin").addEventListener("click", function () {
     playClickSound();
     signInWithGoogle();
