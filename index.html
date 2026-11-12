@@ -94,10 +94,12 @@
                     <p class="pill" id="today-date">MON 09 NOV 2026</p>
                   </div>
 
-                  <!-- Signed out, the primary action is signing in; playing
-                       anyway is the quieter one. Signing in flips that round
-                       and adds STATS — see showSignedInState() in app.js. -->
-                  <div class="cta">
+                  <!-- Not played yet today: signed out, the primary action is
+                       signing in, playing anyway the quieter one. Signing in
+                       flips that round and adds STATS — see
+                       showSignedInState() in app.js. Hidden instead once
+                       today's run is done — see prepareOpeningScreen(). -->
+                  <div class="cta" id="cta-block">
                     <button class="btn" id="btn-signin">▶ SIGN IN WITH GOOGLE</button>
 
                     <p class="cta__who" id="cta-who" hidden>
@@ -115,8 +117,30 @@
                     </p>
                   </div>
 
+                  <!-- Already played today: takes the cta block's place so
+                       everything below it — top 3, leaderboard button, player
+                       count — stays exactly where it always is. Same "frame +
+                       pink btn-row" shape as the cta block above, so coming
+                       back here after a run doesn't look like a different
+                       page — see fillPlayedBlock() in app.js. -->
+                  <div class="cta" id="played-block" hidden>
+                    <div class="frame">
+                      <span class="tag">ALREADY PLAYED TODAY <b>&gt;&gt;</b></span>
+                      <p class="played__score" id="played-score">—</p>
+                      <p class="played__time" id="played-time"></p>
+                      <p class="played__note">COME BACK TOMORROW FOR 3 NEW QUESTIONS</p>
+                    </div>
+                    <!-- FULL LEADERBOARD already lives in the top-3 panel
+                         below, so this is STATS alone — only shown once
+                         signed in, since a guest has none to see. -->
+                    <div class="btn-row" id="played-btn-row" hidden>
+                      <button class="btn btn--pink" id="btn-played-stats">◆ STATS</button>
+                    </div>
+                  </div>
+
                   <!-- Today's top 3, with the full leaderboard grouped onto it.
-                       app.js fills the list in from the leaderboard. -->
+                       Always shown — played or not — app.js fills the list in
+                       from the leaderboard. -->
                   <div class="frame top3">
                     <span class="tag">TODAY'S TOP 3 <b>&gt;&gt;</b></span>
                     <ol class="top3__list" id="top3-list">
@@ -126,32 +150,6 @@
                       <button class="btn btn--ghost" id="btn-leaderboard">▷ FULL LEADERBOARD</button>
                       <p class="onboard__count">PLAYERS TODAY: <b id="player-count">–</b></p>
                     </div>
-                  </div>
-                </div>
-              </section>
-
-              <!-- ── SCREEN 1b: ALREADY PLAYED ──
-                   Shown instead of the name form when this browser has
-                   already finished today's quiz. -->
-              <section class="screen" id="screen-played">
-                <div class="stack">
-                  <div class="onboard__head">
-                    <h1 class="title">SideQues<span class="title__cursor"></span></h1>
-                    <p class="pill" id="played-date">—</p>
-                  </div>
-
-                  <div class="frame">
-                    <span class="tag">ALREADY PLAYED TODAY <b>&gt;&gt;</b></span>
-                    <p class="played__score" id="played-score">—</p>
-                    <p class="played__time" id="played-time"></p>
-                    <p class="played__note">COME BACK TOMORROW FOR 3 NEW QUESTIONS</p>
-                  </div>
-
-                  <!-- Same primary/secondary pairing as the onboarding screen's
-                       CTA row — STATS only joins in once signed in. -->
-                  <div class="btn-row">
-                    <button class="btn btn--pink" id="btn-played-leaderboard">▷ SEE LEADERBOARD</button>
-                    <button class="btn btn--pink" id="btn-played-stats" hidden>◆ STATS</button>
                   </div>
                 </div>
               </section>
