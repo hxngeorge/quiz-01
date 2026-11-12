@@ -1,5 +1,5 @@
 /* =========================================================================
-   QUIZ://01 — ADMIN PANEL LOGIC
+   SideQues — ADMIN PANEL LOGIC
    -------------------------------------------------------------------------
    This page loads firebase-config.js and app.js before this file, so it can
    reuse the exact same functions the game itself uses to read the Google
@@ -515,7 +515,7 @@ function exportTodaysResults() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = "quiz-01_scores_" + todayKey() + ".csv";
+  a.download = "sideques_scores_" + todayKey() + ".csv";
   document.body.appendChild(a);
   a.click();
   a.remove();
