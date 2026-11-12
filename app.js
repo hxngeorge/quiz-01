@@ -1838,14 +1838,11 @@ function handleStart() {
   startQuiz();
 }
 
-/** Fills in the "already played" screen from the saved score. */
-function fillPlayedScreen() {
-  const dateEl  = document.getElementById("played-date");
+/** Fills in the "already played" block from the saved score. */
+function fillPlayedBlock() {
   const scoreEl = document.getElementById("played-score");
-  if (dateEl) dateEl.textContent = todayLabel();
-
-  const timeEl = document.getElementById("played-time");
-  const saved  = savedScoreToday();
+  const timeEl  = document.getElementById("played-time");
+  const saved   = savedScoreToday();
 
   if (scoreEl) {
     scoreEl.textContent = saved ? `${saved.points} PTS` : "SCORE SAVED";
@@ -1858,19 +1855,27 @@ function fillPlayedScreen() {
 }
 
 /**
- * Which screen a player lands on: "no quiz today", "you've already
- * played", or the name form. A draft preview skips the played check, so
- * the admin can rehearse as often as they like.
+ * Which screen a player lands on: "no quiz today", or the onboarding screen
+ * — which is the same screen whether today's run is still to come or
+ * already done, see prepareOpeningScreen(). A draft preview skips the
+ * played check, so the admin can rehearse as often as they like.
  */
 function openingScreenId() {
   if (state.quizMode === "none") return "screen-no-quiz";
-  if (state.quizMode !== "preview" && hasPlayedToday()) return "screen-played";
   return "screen-onboarding";
 }
 
 /** Fills in whatever the chosen opening screen needs to show. */
 function prepareOpeningScreen(id) {
-  if (id === "screen-played") fillPlayedScreen();
+  if (id === "screen-onboarding") {
+    // Already played today: the "already played" block takes the cta
+    // block's place, but the top-3 panel below stays exactly where it is
+    // either way — same page, not a different one.
+    const played = state.quizMode !== "preview" && hasPlayedToday();
+    document.getElementById("cta-block").hidden = played;
+    document.getElementById("played-block").hidden = !played;
+    if (played) fillPlayedBlock();
+  }
   if (id === "screen-no-quiz") {
     document.getElementById("no-quiz-date").textContent = todayLabel();
   }
@@ -1930,9 +1935,11 @@ function showSignedInState() {
   // Playing is only the primary action once there's an account behind it
   startBtn.classList.toggle("btn--pink", !signedIn);
 
-  // Same STATS button on the "already played" screen, since a signed-in
-  // player can still want to check it after they've finished for the day
-  document.getElementById("btn-played-stats").hidden = !signedIn;
+  // Same STATS button on the "already played" block, since a signed-in
+  // player can still want to check it after they've finished for the day.
+  // Hide the whole row (not just the button) so a guest doesn't leave an
+  // empty gap where it would have been.
+  document.getElementById("played-btn-row").hidden = !signedIn;
 
   if (signedIn) {
     document.getElementById("signed-in-name").textContent = state.authUser.name;
@@ -2124,7 +2131,6 @@ async function init() {
   });
 
   document.getElementById("btn-leaderboard").addEventListener("click", openLeaderboard);
-  document.getElementById("btn-played-leaderboard").addEventListener("click", openLeaderboard);
   document.getElementById("btn-results-leaderboard").addEventListener("click", openLeaderboard);
   document.getElementById("btn-noquiz-leaderboard").addEventListener("click", openLeaderboard);
 
