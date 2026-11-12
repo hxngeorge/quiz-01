@@ -1,5 +1,5 @@
 /* =========================================================================
-   QUIZ://01 — STYLESHEET
+   SideQues — STYLESHEET
    -------------------------------------------------------------------------
    Look & feel:
      • Cabinet  → wide charcoal CRT with stickers + tape label
@@ -280,32 +280,31 @@ ol {
   font-family: var(--font-pixel);
   line-height: 1;
   font-size: clamp(10px, 1.6cqi, 18px);
-  opacity: 0.4;                      /* kept quiet so they never compete with the content */
+  opacity: 0.16;                     /* barely there — texture, not content */
   animation: bob 4s steps(4, end) infinite;
 }
-/* Solid block with a character punched out, e.g. green "?" block */
+/* Hollow outlined block with a character inside, e.g. green "?" block.
+   Outlined rather than filled so it reads as faint background texture. */
 .deco--block {
   display: grid;
   place-items: center;
   width: 2.2em;
   height: 2.2em;
-  color: #000;
+  background: transparent;
 }
-.deco--green { background: var(--green); }
-.deco--pink  { background: var(--pink); }
-.deco--white { background: var(--white); }
+.deco--green { color: var(--green); box-shadow: inset 0 0 0 2px var(--green); }
+.deco--pink  { color: var(--pink);  box-shadow: inset 0 0 0 2px var(--pink); }
+.deco--white { color: var(--white); box-shadow: inset 0 0 0 2px var(--white); }
 .deco--text  { color: var(--white); }
 
-/* While a quiz is being played the corner icons step back: hollow
-   outlines in grey instead of solid colour blocks, so the middle of
-   the screen keeps all the attention. */
+/* While a quiz is being played they step back further still, and lose
+   their colour, so the middle of the screen keeps all the attention. */
 .crt.is-playing .deco {
-  opacity: 0.28;
-  transition: opacity 300ms, color 300ms, background 300ms;
+  opacity: 0.1;
+  transition: opacity 300ms, color 300ms, box-shadow 300ms;
 }
 .crt.is-playing .deco--block {
   color: var(--dim);
-  background: transparent;
   box-shadow: inset 0 0 0 2px var(--dim);
 }
 .crt.is-playing .deco--text {
@@ -315,10 +314,8 @@ ol {
 /* Kept in the side margins, below the title, so they never cover content */
 .deco:nth-child(1) { top: 34%; left: 3%; }
 .deco:nth-child(2) { top: 40%; right: 3%; animation-delay: -1s; }
-.deco:nth-child(3) { top: 64%; left: 5%;  animation-delay: -2s; }
-.deco:nth-child(4) { top: 68%; right: 5%; animation-delay: -3s; }
-.deco:nth-child(5) { top: 84%; left: 11%; animation-delay: -1.5s; }
-.deco:nth-child(6) { top: 86%; right: 12%; animation-delay: -2.5s; }
+.deco:nth-child(3) { top: 84%; left: 11%; animation-delay: -1.5s; }
+.deco:nth-child(4) { top: 86%; right: 12%; animation-delay: -2.5s; }
 
 /* --- Panel inside the glass (single column — no side-by-side layout) --- */
 .crt__inner {
@@ -565,6 +562,19 @@ ol {
   right: clamp(60px, 7.8cqi, 80px);
 }
 
+/* How to play. Sits one slot left of the sound icon — the same slot the
+   sound icon moves into once the exit button takes the corner — and hides
+   the moment a quiz starts, same as the corner decorations dimming. */
+.info-btn.info-btn {
+  position: absolute;
+  top: clamp(14px, 2.5cqi, 26px);
+  right: clamp(60px, 7.8cqi, 80px);
+  z-index: 2;
+}
+.crt.is-playing .info-btn.info-btn {
+  display: none;
+}
+
 /* Exit the quiz. Only appears once a quiz is actually running — the same
    moment the corner decorations dim (.crt.is-playing) — so it's never
    sitting there with nothing to exit from. */
@@ -618,6 +628,73 @@ ol {
 }
 .modal-box .btn-row {
   gap: 12px;
+}
+
+/* --- How to play --- */
+.modal-box--info {
+  min-height: 0;
+  max-height: 80%;
+  justify-content: flex-start;
+  text-align: left;
+}
+.modal-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 30px;
+  height: 30px;
+  font-size: 13px;
+  z-index: 1;
+}
+/* The frame's border is a fixed decoration; only the text inside scrolls,
+   so a long explanation never forces the popup past ~80% of the glass. */
+.info-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+.info-heading {
+  font-family: var(--font-pixel);
+  font-size: clamp(9px, 1.3cqi, 12px);
+  letter-spacing: 1px;
+  color: var(--green);
+  margin: 18px 0 8px;
+}
+.info-heading:first-child {
+  margin-top: 0;
+}
+/* A small hoverable marker beside a heading — same idea as the admin
+   panel's info-dot, redrawn in the game's own pixel style. */
+.info-dot {
+  display: inline-grid;
+  place-items: center;
+  width: 1.3em;
+  height: 1.3em;
+  border-radius: 50%;
+  border: 1px solid var(--dim);
+  color: var(--dim);
+  font-size: 0.85em;
+  line-height: 1;
+  vertical-align: middle;
+  cursor: help;
+}
+.info-scroll p {
+  font-family: var(--font-body);
+  font-size: clamp(16px, 1.8cqi, 20px);
+  line-height: 1.5;
+  color: var(--dim);
+  margin: 0;
+}
+.info-scroll p b {
+  font-weight: normal;
+  color: var(--white);
+}
+.info-scroll p.info-note {
+  margin-top: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--pink);
+  color: var(--white);
 }
 
 
@@ -687,14 +764,6 @@ ol {
   animation: blink 1.1s steps(1, end) infinite;
 }
 
-/* Small kicker above the title: "═ DAILY QUIZ ═" */
-.kicker {
-  font-family: var(--font-pixel);
-  font-size: clamp(8px, 1.2cqi, 16px);
-  letter-spacing: 2px;
-  color: var(--green);
-}
-
 /* Outlined pill (used for today's date) */
 .pill {
   display: inline-block;
@@ -708,14 +777,6 @@ ol {
 }
 
 /* Green bracket label, e.g. "[ ENTER YOUR NAME ]" */
-.label {
-  font-family: var(--font-pixel);
-  font-size: clamp(8px, 1cqi, 13px);
-  letter-spacing: 1px;
-  color: var(--green);
-  text-align: left;
-}
-
 .text-green { color: var(--green); }
 .text-pink  { color: var(--pink); }
 .text-dim   { color: var(--dim); }
@@ -836,6 +897,29 @@ ol {
   box-shadow: inset 0 0 0 2px var(--btn-color);
 }
 
+/* Ghost variant — the quietest of the three. Used for actions that belong
+   to a panel they sit on rather than to the screen (the leaderboard link
+   under today's top 3), so it never competes with the main CTAs. */
+.btn--ghost {
+  --btn-color: var(--dim);
+  --btn-text: var(--white);
+  padding: 10px 14px;
+  font-size: clamp(8px, 0.95cqi, 12px);
+  background: transparent;
+  box-shadow: inset 0 0 0 2px var(--btn-color);
+}
+.btn--ghost:hover,
+.btn--ghost:focus-visible {
+  --btn-color: var(--green);
+  --btn-text: var(--green);
+  transform: none;
+  box-shadow: inset 0 0 0 2px var(--btn-color);
+}
+.btn--ghost:active {
+  transform: translate(1px, 1px);
+  box-shadow: inset 0 0 0 2px var(--btn-color);
+}
+
 /* Two buttons side by side */
 .btn-row {
   display: flex;
@@ -845,7 +929,74 @@ ol {
   flex: 1;
 }
 
-/* Small square icon button (sound toggle) */
+/* --- Opening screen's call-to-action block ---
+   This screen carries the most of any: title, two CTAs, the guest note and
+   the top-3 panel. Everything on it runs a little tighter than the app's
+   defaults so it still fits a laptop's glass without scrolling. */
+#screen-onboarding .stack {
+  gap: clamp(8px, 1.3cqi, 20px);
+}
+#screen-onboarding .onboard__head {
+  gap: clamp(2px, 0.5cqi, 8px);
+}
+#screen-onboarding .title {
+  font-size: clamp(26px, 6.6cqi, 96px);
+}
+#screen-onboarding .pill {
+  padding: 4px 12px;
+  font-size: clamp(12px, 1.3cqi, 18px);
+}
+/* The two actions and the note that qualifies them read as one block, so they
+   sit closer to each other than to anything else on the screen. */
+.cta {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(6px, 0.9cqi, 10px);
+}
+.cta .btn {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+.cta__who {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-family: var(--font-pixel);
+  font-size: clamp(7px, 0.9cqi, 11px);
+  letter-spacing: 1px;
+  color: var(--dim);
+}
+.cta__who b {
+  font-weight: normal;
+  color: var(--green);
+}
+/* Why a guest's run isn't saved — deliberately plain, not alarming */
+.cta__note {
+  text-align: center;
+  font-size: clamp(15px, 1.7cqi, 20px);
+  line-height: 1.4;
+  color: var(--dim);
+}
+
+/* A button that reads as a link: used inline inside a line of text */
+.linkbtn {
+  font-family: inherit;
+  font-size: inherit;
+  letter-spacing: inherit;
+  color: var(--pink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.linkbtn:hover,
+.linkbtn:focus-visible {
+  color: var(--white);
+}
+
+/* Small square icon button (sound toggle).
+   No position here on purpose: every icon button is placed absolutely by its
+   own class above, and a `position` in this later rule would outrank those. */
 .icon-btn {
   width: 38px;
   height: 38px;
@@ -857,6 +1008,21 @@ ol {
 }
 .icon-btn:hover {
   border-color: var(--green);
+}
+
+/* Sound off: a slash across the note, rather than a second glyph */
+.icon-btn.is-muted {
+  color: var(--dim);
+}
+.icon-btn.is-muted::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 24px;
+  height: 2px;
+  background: var(--pink);
+  transform: translate(-50%, -50%) rotate(-45deg);
 }
 
 /* --- Text input: black box, thin white line, green when focused --- */
@@ -1355,6 +1521,150 @@ ol {
 .results {
   width: 100%;
 }
+
+/* --- Stats screen --- */
+/* Two stacked panels, with room for the tag that overhangs the second one */
+#stats-body {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(14px, 2.4cqi, 30px);
+  width: 100%;
+}
+
+/* Last 7 days, drawn as stacked LED segments rather than flat bars */
+.chart {
+  width: 100%;
+}
+.chart__plot {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: clamp(5px, 1.1cqi, 12px);
+  height: clamp(96px, 14cqi, 160px);
+}
+.chart__col {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  gap: 7px;
+  justify-items: center;
+  min-width: 0;
+}
+.chart__value,
+.chart__day {
+  font-family: var(--font-pixel);
+  font-size: clamp(7px, 0.85cqi, 11px);
+  letter-spacing: 0;
+  color: var(--dim);
+}
+.chart__track {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+  height: 100%;
+  box-shadow: inset 0 0 0 1px rgba(240, 240, 240, 0.07);
+}
+.chart__bar {
+  position: relative;
+  width: 100%;
+  background: repeating-linear-gradient(
+    to top, var(--green) 0 4px, transparent 4px 6px
+  );
+  transform-origin: bottom;
+}
+/* The day's points sit just above the top of its own bar */
+.chart__bar .chart__value {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  margin-bottom: 4px;
+  text-align: center;
+}
+/* A day that wasn't played: an empty track with a floor line, so a gap in
+   the week reads as a gap rather than as a zero score. */
+.chart__col--missed .chart__value {
+  align-self: flex-end;
+  width: 100%;
+  text-align: center;
+  opacity: 0.6;
+}
+.chart__col--missed .chart__track {
+  background: linear-gradient(to top, rgba(240, 240, 240, 0.09) 2px, transparent 2px);
+}
+/* Today stands out in the app's other accent colour */
+.chart__col--today .chart__bar {
+  background: repeating-linear-gradient(
+    to top, var(--pink) 0 4px, transparent 4px 6px
+  );
+}
+.chart__col--today .chart__day,
+.chart__col--today .chart__value {
+  color: var(--pink);
+}
+/* Four stat tiles, two per row */
+.stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(10px, 1.8cqi, 20px) clamp(12px, 2.4cqi, 28px);
+  text-align: left;
+}
+.stat dt {
+  font-family: var(--font-pixel);
+  font-size: clamp(7px, 0.95cqi, 11px);
+  letter-spacing: 1px;
+  color: var(--dim);
+}
+.stat dd {
+  margin-top: 4px;
+  font-size: clamp(16px, 2cqi, 24px);
+  letter-spacing: 1px;
+  color: var(--white);
+}
+.stat dd b {
+  font-weight: normal;
+  color: var(--green);
+}
+
+.chart__foot {
+  margin-top: 12px;
+  font-family: var(--font-pixel);
+  font-size: clamp(8px, 1.1cqi, 13px);
+  letter-spacing: 1px;
+  color: var(--dim);
+}
+.chart__foot b {
+  font-weight: normal;
+  color: var(--green);
+}
+
+/* The bars grow up out of the floor, left to right */
+#screen-stats.is-active .chart__bar {
+  animation: grow-bar 380ms ease-out both;
+}
+#screen-stats.is-active .chart__col:nth-child(1) .chart__bar { animation-delay: 60ms; }
+#screen-stats.is-active .chart__col:nth-child(2) .chart__bar { animation-delay: 120ms; }
+#screen-stats.is-active .chart__col:nth-child(3) .chart__bar { animation-delay: 180ms; }
+#screen-stats.is-active .chart__col:nth-child(4) .chart__bar { animation-delay: 240ms; }
+#screen-stats.is-active .chart__col:nth-child(5) .chart__bar { animation-delay: 300ms; }
+#screen-stats.is-active .chart__col:nth-child(6) .chart__bar { animation-delay: 360ms; }
+#screen-stats.is-active .chart__col:nth-child(7) .chart__bar { animation-delay: 420ms; }
+
+@keyframes grow-bar {
+  from { transform: scaleY(0); }
+  to   { transform: scaleY(1); }
+}
+
+.stats-streakline {
+  font-family: var(--font-pixel);
+  font-size: clamp(10px, 1.3cqi, 15px);
+  letter-spacing: 1px;
+  color: var(--pink);
+  text-shadow: var(--glow-pink);
+}
+.stats-empty {
+  font-size: clamp(15px, 1.7cqi, 20px);
+  color: var(--dim);
+}
 .results__list {
   display: flex;
   flex-direction: column;
@@ -1391,6 +1701,23 @@ ol {
   color: var(--pink);
 }
 
+.results-guest {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+.results-guest .cta__note {
+  margin: 0;
+}
+.results-guest__saved {
+  font-family: var(--font-pixel);
+  font-size: clamp(9px, 1.1cqi, 12px);
+  letter-spacing: 1px;
+  color: var(--green);
+}
+
 /* Each row slides in after the one above */
 #screen-results.is-active .banner      { animation: rise-in 320ms ease-out both; }
 #screen-results.is-active .results__row:nth-child(1) { animation: rise-in 300ms ease-out 140ms both; }
@@ -1401,11 +1728,12 @@ ol {
 /* --- Leaderboard --- */
 .tabs {
   display: flex;
-  gap: 10px;
+  gap: clamp(6px, 1.2cqi, 10px);
   justify-content: center;
+  flex-wrap: wrap;
 }
 .tab {
-  padding: 10px 18px;
+  padding: 10px clamp(10px, 2cqi, 18px);
   font-family: var(--font-pixel);
   font-size: clamp(8px, 1.1cqi, 13px);
   letter-spacing: 1px;
@@ -1449,14 +1777,22 @@ ol {
   color: var(--dim);
 }
 
-/* Medal column, then name on the left, then the numbers on the right */
+/* Rank column, then name on the left, then the numbers on the right */
 .table td {
   text-align: left;
 }
 .table td.rank {
   width: 2.4em;
   text-align: center;
+  color: var(--dim);
 }
+/* The podium, picked out in colour instead of medal emoji */
+.table td.rank[data-rank="1"] {
+  color: var(--green);
+  text-shadow: var(--glow-green);
+}
+.table td.rank[data-rank="2"] { color: var(--white); }
+.table td.rank[data-rank="3"] { color: var(--pink); }
 .table td:nth-child(2) {
   text-transform: uppercase;      /* names look the same however they're typed */
 }
@@ -1521,8 +1857,31 @@ ol {
 }
 
 /* --- Top-3 list (onboarding) --- */
+/* The top-3 panel also carries the full-leaderboard button and the player
+   count, so the three read as one group rather than three loose things. */
 .top3 {
-  margin-top: 10px;         /* room for the tag that overhangs the top edge */
+  /* Enough space above to read as a separate group from the CTA block —
+     which also covers the tag that overhangs the panel's top edge. */
+  margin-top: clamp(16px, 2.6cqi, 34px);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 1.4cqi, 14px);
+}
+.top3 {
+  padding: clamp(18px, 2.4cqi, 24px) 20px clamp(10px, 1.4cqi, 14px);
+}
+/* Footer row of the panel: the full-leaderboard action on one side, how many
+   have played on the other — one line instead of two stacked ones. */
+.top3__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.top3__foot > .onboard__count {
+  font-size: clamp(14px, 1.6cqi, 20px);
+  letter-spacing: 1px;
 }
 .top3__list {
   display: flex;
@@ -1531,16 +1890,27 @@ ol {
 }
 .top3__row {
   display: grid;
-  grid-template-columns: 36px 1fr auto;
+  grid-template-columns: 1.4em 1fr auto;   /* just wide enough for the rank digit */
   align-items: center;
-  gap: 10px;
-  padding: 2px 4px;
-  font-size: clamp(20px, 2.4cqi, 32px);
+  gap: 12px;
+  padding: 1px 4px;
+  font-size: clamp(17px, 2.1cqi, 28px);
   text-align: left;
 }
 .top3__row + .top3__row {
   border-top: 1px dashed rgba(240, 240, 240, 0.18);
 }
+/* Same podium colours as the full table's rank column */
+.top3__rank {
+  text-align: center;
+  color: var(--dim);
+}
+.top3__rank[data-rank="1"] {
+  color: var(--green);
+  text-shadow: var(--glow-green);
+}
+.top3__rank[data-rank="2"] { color: var(--white); }
+.top3__rank[data-rank="3"] { color: var(--pink); }
 .top3__name {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1706,6 +2076,11 @@ ol {
   .crt__stars::after,
   .screen.is-shaking {
     animation: none;
+  }
+  /* The bars still need their height, so they land instead of growing */
+  #screen-stats.is-active .chart__bar {
+    animation: none;
+    transform: none;
   }
 }
 
@@ -1933,9 +2308,6 @@ ol {
   .onboard__head {
     gap: 6px;
     margin-bottom: 0;
-  }
-  .kicker {
-    display: none;
   }
   .title {
     font-size: clamp(24px, 6cqi, 40px);
