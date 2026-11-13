@@ -860,6 +860,9 @@ async function waitForImages() {
    devices, and keeps two different people from colliding under one name:
      /daily/{YYYY-MM-DD}/scores/{uid}   one document per player per day
      /alltime/{uid}                     running totals, streak and history
+     /players/{uid}                     their chosen display name — set
+                                         once via the name-setup popup, not
+                                         pulled from Google every time
    ========================================================================= */
 
 const firebase = {
@@ -960,6 +963,20 @@ async function connectFirebase() {
     await withTimeout(new Promise(function (resolve) {
       authLib.onAuthStateChanged(firebase.auth, async function (user) {
         state.authUser = user ? { uid: user.uid, name: user.displayName || "Player" } : null;
+
+        if (user) {
+          const profile = await fetchPlayerProfile(user.uid);
+          if (profile && profile.name) {
+            state.authUser.name = profile.name;
+          } else {
+            // First time this account has ever signed in — give them the
+            // chance to pick a name before anything of theirs is saved
+            // under it. Not awaited: a human deciding on a name shouldn't
+            // hold up the opening screen appearing.
+            openNameModal({ firstTime: true, suggested: user.displayName || "Player" });
+          }
+        }
+
         await checkRemotePlayStatus();
         showSignedInState();     // the popup finishes long after init() did
         refreshPlayedState();
@@ -1053,6 +1070,98 @@ function refreshPlayedState() {
   const screen = document.getElementById("screen-onboarding");
   if (screen.classList.contains("is-active")) {
     prepareOpeningScreen("screen-onboarding");
+  }
+}
+
+/**
+ * A signed-in player's chosen display name — separate from whatever Google
+ * calls them, and separate from the daily/alltime records, so it persists
+ * from the moment they pick it, before they've necessarily played at all.
+ * Returns null the very first time an account ever signs in, which is the
+ * signal to open the name-setup popup instead of quietly using Google's name.
+ */
+async function fetchPlayerProfile(uid) {
+  try {
+    const { doc, getDoc } = firebase.fns;
+    const snapshot = await getDoc(doc(firebase.db, "players", uid));
+    return snapshot.exists() ? snapshot.data() : null;
+  } catch (err) {
+    console.warn("SideQues — couldn't read your saved name.", err);
+    return null;
+  }
+}
+
+/**
+ * Saves a chosen display name against the account, and — if they've
+ * already played before — brings the all-time leaderboard's copy of their
+ * name in step immediately, rather than waiting for their next play.
+ * Today's and past daily scores keep whatever name they were saved under;
+ * only future ones use the new one.
+ */
+async function savePlayerName(uid, name) {
+  const { doc, setDoc, getDoc, updateDoc } = firebase.fns;
+  await setDoc(doc(firebase.db, "players", uid), { name: name });
+
+  const allTimeRef = doc(firebase.db, "alltime", uid);
+  const existing = await getDoc(allTimeRef);
+  if (existing.exists()) {
+    await updateDoc(allTimeRef, { name: name });
+  }
+}
+
+/**
+ * Opens the name popup. The first-time version (right after a brand-new
+ * account's first sign-in) drops the close button — picking a name is the
+ * one thing standing between signing in and playing, so there's nothing to
+ * cancel back to. Opening it later from the info popup always allows
+ * backing out without changing anything already saved.
+ */
+function openNameModal(options) {
+  document.getElementById("name-modal-title").textContent =
+    options.firstTime ? "CHOOSE YOUR NAME" : "CHANGE YOUR NAME";
+  document.getElementById("name-modal-sub").textContent = options.firstTime
+    ? "This is what shows up on the leaderboard — keep it, or make it your own."
+    : "Changes what shows up on the leaderboard from here on — past scores keep the name you played under.";
+  document.getElementById("btn-name-close").hidden = Boolean(options.firstTime);
+
+  const input = document.getElementById("name-input");
+  input.value = options.suggested || "";
+  document.getElementById("name-error").textContent = "";
+  document.getElementById("name-modal").classList.add("is-active");
+  input.focus();
+}
+
+function closeNameModal() {
+  document.getElementById("name-modal").classList.remove("is-active");
+}
+
+/** Validates and saves whatever's in the name box, then updates every
+ *  place that already shows the signed-in player's name. */
+async function submitNameModal() {
+  const input = document.getElementById("name-input");
+  const errorEl = document.getElementById("name-error");
+  const name = input.value.trim();
+
+  if (!name) {
+    errorEl.textContent = "TYPE A NAME FIRST";
+    return;
+  }
+  if (!state.authUser) {
+    closeNameModal();     // signed out from under this somehow — nothing to save to
+    return;
+  }
+
+  playClickSound();
+  try {
+    await withRetry(function () { return savePlayerName(state.authUser.uid, name); },
+      { timeoutSeconds: 6, label: "saving your name" });
+    state.authUser.name = name;
+    closeNameModal();
+    showSignedInState();
+    refreshPlayedState();
+  } catch (err) {
+    errorEl.textContent = "COULDN'T SAVE — TRY AGAIN";
+    console.warn("SideQues — couldn't save the chosen name.", err);
   }
 }
 
@@ -2021,6 +2130,10 @@ function showSignedInState() {
   // empty gap where it would have been.
   document.getElementById("played-btn-row").hidden = !signedIn;
 
+  // A guest has no chosen name to change, and nowhere signed in means
+  // nothing to show it against either.
+  document.getElementById("change-name-row").hidden = !signedIn;
+
   if (signedIn) {
     document.getElementById("signed-in-name").textContent = state.authUser.name;
   }
@@ -2262,6 +2375,21 @@ async function init() {
   document.getElementById("btn-info-close").addEventListener("click", function () {
     playClickSound();
     closeInfoModal();
+  });
+
+  // --- Choosing / changing your name ---
+  document.getElementById("btn-change-name").addEventListener("click", function () {
+    playClickSound();
+    closeInfoModal();     // one overlay open at a time, not stacked
+    openNameModal({ firstTime: false, suggested: state.authUser ? state.authUser.name : "" });
+  });
+  document.getElementById("btn-name-close").addEventListener("click", function () {
+    playClickSound();
+    closeNameModal();
+  });
+  document.getElementById("btn-name-save").addEventListener("click", submitNameModal);
+  document.getElementById("name-input").addEventListener("keydown", function (event) {
+    if (event.key === "Enter") submitNameModal();
   });
 
   // The "LOADING…" screen is showing. Fetch today's questions and connect
