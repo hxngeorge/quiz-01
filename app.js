@@ -1068,7 +1068,7 @@ async function checkRemotePlayStatus() {
  *  auth refresh never yanks a player off a quiz or another screen. */
 function refreshPlayedState() {
   const screen = document.getElementById("screen-onboarding");
-  if (screen.classList.contains("is-active")) {
+  if (screen && screen.classList.contains("is-active")) {
     prepareOpeningScreen("screen-onboarding");
   }
 }
@@ -1117,6 +1117,7 @@ async function savePlayerName(uid, name) {
  * backing out without changing anything already saved.
  */
 function openNameModal(options) {
+  if (!document.getElementById("name-modal")) return;   // not on the player page
   document.getElementById("name-modal-title").textContent =
     options.firstTime ? "CHOOSE YOUR NAME" : "CHANGE YOUR NAME";
   document.getElementById("name-modal-sub").textContent = options.firstTime
@@ -1132,7 +1133,8 @@ function openNameModal(options) {
 }
 
 function closeNameModal() {
-  document.getElementById("name-modal").classList.remove("is-active");
+  const modal = document.getElementById("name-modal");
+  if (modal) modal.classList.remove("is-active");
 }
 
 /** Validates and saves whatever's in the name box, then updates every
