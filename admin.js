@@ -150,10 +150,12 @@ function showPanel() {
    SECTION 1 — GOOGLE SHEET
    ========================================================================= */
 
-// Remembers the questions built from whichever row is selected, so the
-// detail view and the "is today's quiz live?" banner both read from one
+// Only yesterday/today/tomorrow's rows, not the whole Sheet — that's what
+// this panel is actually checking at a glance; the Sheet itself is the full
+// record. Remembers the questions built from whichever row is selected, so
+// the detail view and the "is today's quiz live?" banner both read from one
 // place instead of re-parsing.
-let sheetRows = [];        // [{ date, status, isToday, ok, questions|error }]
+let sheetRows = [];        // [{ date, status, isToday, relativeLabel, ok, questions|error }]
 let selectedRowIndex = -1;
 
 async function refreshSheetSection() {
@@ -202,6 +204,14 @@ async function fetchAndRenderSheet() {
   }
 
   const today = todayKey();
+  // The full Sheet is the real record — this panel only ever needs to show
+  // enough to catch a mistake before players see it: yesterday (in case
+  // something's still wrong from last night), today, and tomorrow (so it's
+  // ready ahead of time). Everything else stays in the Sheet itself.
+  const yesterday = dateKeyOffset(-1);
+  const tomorrow = dateKeyOffset(1);
+  const relativeLabel = { [yesterday]: "YESTERDAY", [today]: "TODAY", [tomorrow]: "TOMORROW" };
+
   sheetRows = rawRows
     .filter(function (row) { return cellText(row.date) !== ""; })   // skip blank template rows
     .map(function (row) {
@@ -211,6 +221,7 @@ async function fetchAndRenderSheet() {
         date: date,
         status: status,
         isToday: date === today,
+        relativeLabel: relativeLabel[date] || null,
         // the raw question text, so a row that won't parse is still
         // recognisable in the table instead of showing three dashes
         rawText: [1, 2, 3].map(function (n) { return cellText(row["q" + n + "_text"]); })
@@ -223,10 +234,12 @@ async function fetchAndRenderSheet() {
         entry.error = err.message;
       }
       return entry;
-    });
+    })
+    .filter(function (entry) { return entry.relativeLabel !== null; })
+    .sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
 
   if (sheetRows.length === 0) {
-    statusEl.innerHTML = banner("warn", "No dated rows found yet — add a row with today's date to get started.");
+    statusEl.innerHTML = banner("warn", "No row dated yesterday, today or tomorrow yet — add one with today's date to get started.");
     btn.disabled = false;
     return;
   }
@@ -273,7 +286,8 @@ function renderSheetTable() {
     };
 
     tr.innerHTML =
-      "<td>" + escapeHtml(row.date) + (row.isToday ? ' <span class="pill pill--muted">TODAY</span>' : "") + "</td>" +
+      "<td>" + escapeHtml(row.date) + (row.relativeLabel
+        ? ' <span class="pill pill--muted">' + row.relativeLabel + '</span>' : "") + "</td>" +
       "<td>" + statusPill(row.status) + "</td>" +
       "<td>" + escapeHtml(qCell(1)) + "</td>" +
       "<td>" + escapeHtml(qCell(2)) + "</td>" +
