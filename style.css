@@ -1010,6 +1010,13 @@ ol {
   border: 2px solid var(--white);
   transition: border-color 120ms;
 }
+/* An author rule beats the browser's own [hidden] default outright, so
+   display:grid above would otherwise win even while hidden is set —
+   needs its own rule to actually disappear (e.g. #btn-name-close on the
+   first-time name popup, which has no way to cancel out of). */
+.icon-btn[hidden] {
+  display: none;
+}
 .icon-btn:hover {
   border-color: var(--green);
 }
