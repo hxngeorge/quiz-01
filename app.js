@@ -56,6 +56,8 @@ const state = {
   boardTab: "today",   // which leaderboard tab is open
 
   authUser: null,      // { uid, name } once signed in with Google, else null
+  remoteAlreadyPlayed: false,   // this account already has today's score saved —
+                                 // checked against Firestore, not just this device
 
   // Where today's questions came from:
   //   "live"     a live row in the Google Sheet
@@ -579,8 +581,15 @@ function storageRemove(key) {
   }
 }
 
-/** True if this browser has already finished today's quiz. */
+/**
+ * True if today's quiz is already done — either this device played it (the
+ * local flag, the only thing a guest can be checked against), or, for a
+ * signed-in player, their account already has today's score saved in
+ * Firestore, checked by checkRemotePlayStatus() regardless of which device
+ * that happened on.
+ */
 function hasPlayedToday() {
+  if (state.remoteAlreadyPlayed) return true;
   return storageGet(KEY_PLAYED + todayKey()) === "true";
 }
 
@@ -945,11 +954,15 @@ async function connectFirebase() {
     // Firebase remembers a signed-in player between visits, but checking
     // that is itself async — wait for the first answer so nothing that
     // runs right after connectFirebase() has to guess. It keeps state
-    // up to date on every later sign-in/out too, not just this once.
+    // up to date on every later sign-in/out too, not just this once —
+    // including, now, whether this account already has today's score
+    // saved from some other device, via checkRemotePlayStatus().
     await withTimeout(new Promise(function (resolve) {
-      authLib.onAuthStateChanged(firebase.auth, function (user) {
+      authLib.onAuthStateChanged(firebase.auth, async function (user) {
         state.authUser = user ? { uid: user.uid, name: user.displayName || "Player" } : null;
+        await checkRemotePlayStatus();
         showSignedInState();     // the popup finishes long after init() did
+        refreshPlayedState();
         resolve();
       });
     }), 5, "checking sign-in state").catch(function () { /* carry on signed out */ });
@@ -1001,6 +1014,46 @@ async function claimGuestScoreIfAny(user) {
 async function signOutOfGoogle() {
   if (!firebase.ready || !firebase.auth) return;
   await firebase.authFns.signOut(firebase.auth);
+}
+
+/**
+ * The authoritative check for a signed-in player: does their account
+ * already have today's score saved? A Firestore read, not local storage,
+ * so it holds even when they're signing in from a different device than
+ * the one they actually played on — closing the gap that let the same
+ * account rack up points twice in one day. Called every time the sign-in
+ * state changes, from connectFirebase()'s onAuthStateChanged.
+ */
+async function checkRemotePlayStatus() {
+  state.remoteAlreadyPlayed = false;
+  if (!state.authUser || !firebase.ready) return;
+
+  try {
+    const { doc, getDoc } = firebase.fns;
+    const snapshot = await getDoc(doc(firebase.db, "daily", todayKey(), "scores", state.authUser.uid));
+    if (snapshot.exists()) {
+      state.remoteAlreadyPlayed = true;
+      // So this device's "already played" block shows the real score,
+      // not just a generic placeholder — markPlayedToday() only caches it.
+      const data = snapshot.data();
+      markPlayedToday({ points: data.points, time_display: data.time_display });
+    }
+  } catch (err) {
+    // Falls back to this device's own local flag, same as before this
+    // check existed — a failed read here was never the thing stopping a
+    // replay on the device that actually played.
+    console.warn("SideQues — couldn't confirm today's play status.", err);
+  }
+}
+
+/** Re-shows the right half of the onboarding screen after a sign-in state
+ *  change — but only if that's actually the screen on view, so a background
+ *  auth refresh never yanks a player off a quiz or another screen. */
+function refreshPlayedState() {
+  const screen = document.getElementById("screen-onboarding");
+  if (screen.classList.contains("is-active")) {
+    prepareOpeningScreen("screen-onboarding");
+  }
 }
 
 /** The player's IP, if the owner asked for it. Null otherwise. */
@@ -1253,6 +1306,11 @@ function showPartsHint(question) {
   hint.hidden = false;
 }
 
+// Multi-part questions are phrased algebra-style ("name X and Y"), so the
+// boxes are labelled to match rather than counted — falls back to a number
+// past Z, which a real question should never actually reach.
+const PART_LABELS = ["X", "Y", "Z"];
+
 /**
  * Builds one text box per answer part and returns the first. Enter moves to
  * the next box, and submits from the last one. (The first box keeps the id
@@ -1264,13 +1322,14 @@ function buildAnswerInputs(count) {
   box.classList.toggle("answer-inputs--multi", count > 1);
 
   for (let i = 0; i < count; i++) {
+    const label = PART_LABELS[i] || String(i + 1);
     const input = document.createElement("input");
     input.className = "input";
     input.type = "text";
     input.maxLength = 40;
     input.autocomplete = "off";
-    input.placeholder = count === 1 ? "TYPE YOUR ANSWER" : "ANSWER " + (i + 1);
-    input.setAttribute("aria-label", count === 1 ? "Your answer" : "Answer " + (i + 1) + " of " + count);
+    input.placeholder = count === 1 ? "TYPE YOUR ANSWER" : "ANSWER '" + label + "'";
+    input.setAttribute("aria-label", count === 1 ? "Your answer" : "Answer " + label + " of " + count);
     if (i === 0) input.id = "answer-input";
 
     input.addEventListener("keydown", function (event) {
@@ -1844,6 +1903,14 @@ function shakeScreen(id) {
 /** Runs when "READY TO EMBARK" is pressed. */
 function handleStart() {
   playClickSound();
+
+  // The button should already be hidden whenever this is true — this is
+  // just a second lock on the same door, in case a sign-in resolves at an
+  // awkward moment right as it's clicked.
+  if (hasPlayedToday()) {
+    goHome();
+    return;
+  }
 
   // A signed-in player plays as their Google name; a guest needs no name,
   // since nothing about their run is saved or ranked.
