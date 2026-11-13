@@ -406,7 +406,28 @@
 
                 <h3 class="info-heading">SIGNING IN <span class="info-dot" title="Signing in is what ties a score to you, on any device you play from.">i</span></h3>
                 <p class="info-note">Sign in with Google to save your streaks across devices. Playing as a guest is totally fine too, but it just won't be saved.</p>
+                <p id="change-name-row" hidden><button class="linkbtn" id="btn-change-name">✎ CHANGE YOUR NAME</button></p>
               </div>
+            </div>
+          </div>
+
+          <!-- Choosing (or later changing) the name shown on the
+               leaderboard. Opens on its own the first time an account ever
+               signs in — see maybeShowNameSetup() in app.js — and again any
+               time after from the SIGNING IN section above. -->
+          <div class="modal-overlay" id="name-modal">
+            <div class="frame modal-box">
+              <button class="icon-btn modal-close" id="btn-name-close" aria-label="Close" hidden>✕</button>
+              <span class="tag">YOUR NAME <b>&gt;&gt;</b></span>
+              <h2 class="modal-title" id="name-modal-title">CHOOSE YOUR NAME</h2>
+              <p class="modal-sub" id="name-modal-sub">
+                This is what shows up on the leaderboard — keep it, or make it your own.
+              </p>
+              <div class="field">
+                <input class="input" id="name-input" type="text" maxlength="24" autocomplete="off" placeholder="YOUR NAME">
+                <p class="msg-error" id="name-error"></p>
+              </div>
+              <button class="btn btn--pink" id="btn-name-save">✔ SAVE</button>
             </div>
           </div>
         </div>
