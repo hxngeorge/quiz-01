@@ -275,18 +275,31 @@ function rowsFromGviz(text) {
 }
 
 /**
- * Turns a date cell into "YYYY-MM-DD".
- * A plain-text cell already is one. A cell that Sheets has turned into a
- * real date arrives as "Date(2026,10,9)" — and its month counts from 0.
+ * Turns a date cell into "YYYY-MM-DD", whatever shape it actually arrives
+ * in — a cell Sheets has turned into a real date comes back as
+ * "Date(2026,10,9)" (month counts from 0); a cell that's plain text
+ * because an import unticked "Convert text to numbers, dates and formulas"
+ * (see the README) comes back exactly as typed, e.g. "13-11-26" — day,
+ * month, two-digit year. Anything else is passed through as-is.
  */
 function normalizeSheetDate(raw) {
   const text = cellText(raw);
+
   const asDate = text.match(/^Date\((\d+),\s*(\d+),\s*(\d+)/);
   if (asDate) {
     const month = String(Number(asDate[2]) + 1).padStart(2, "0");
     const day = String(Number(asDate[3])).padStart(2, "0");
     return asDate[1] + "-" + month + "-" + day;
   }
+
+  const asText = text.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})$/);
+  if (asText) {
+    const day = asText[1].padStart(2, "0");
+    const month = asText[2].padStart(2, "0");
+    const year = asText[3].length === 2 ? "20" + asText[3] : asText[3];
+    return year + "-" + month + "-" + day;
+  }
+
   return text;
 }
 
