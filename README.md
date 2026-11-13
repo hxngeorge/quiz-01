@@ -124,7 +124,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
     match /daily/{date}/scores/{uid} {
       allow read: if true;
-      allow create, update: if request.auth != null && request.auth.uid == uid;
+      allow create: if request.auth != null && request.auth.uid == uid;
       allow delete: if true;   // lets the admin panel's Remove button work
     }
     match /alltime/{uid} {
@@ -140,6 +140,8 @@ service cloud.firestore {
 Click Publish. This doesn't expire, and it keeps anyone who discovers your API key from reading or writing anything outside the leaderboard data itself.
 
 Why writes are keyed to the signed-in player: a score can only ever be written by the Google account it belongs to (request.auth.uid == uid) — a guest who skips signing in never writes anything at all. Deletes stay open so the admin panel's Remove buttons keep working without needing their own sign-in; that's the same trust the admin password already relies on.
+
+Why today's score only allows create, not update: once a player's daily score document exists, nothing — not even their own account — can overwrite it. That's what actually stops the same account from playing twice in one day and double-counting their all-time total, even if they switch devices partway through. (The app also checks this itself before showing the "ready to embark" button, so a second device shows "already played" straight away — this rule is the backstop for if that check is ever wrong or skipped, not the only thing standing in the way.) The all-time totals document stays on create, update since it's meant to change every day, just never for the same day twice.
 
 File structure
 File	What it is
